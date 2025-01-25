@@ -40,8 +40,16 @@ const lmstudio = createOpenAICompatible({
   baseURL: "http://localhost:1234/v1",
 });
 
-// const model = lmstudio("deepseek-r1-distill-qwen-7b");
-const model = lmstudio("granite-3.1-8b-instruct");
+// const model = lmstudio("deepseek-r1-distill-qwen-7b"); // Calls the same tool many times
+// const model = lmstudio("granite-3.1-8b-instruct"); // Pretty good
+// const model = lmstudio("llama-3.2-3b-instruct"); // Fails to use tools
+// const model = lmstudio("qwen2.5-coder-3b-instruct"); // Fails to use tools
+// const model = lmstudio("gemma-2-2b-it"); // Fast, somewhat capable but not for complex tasks.
+// const model = lmstudio("gemma-2-9b-it"); // Quite fast, but runs multiple tools at once.
+// const model = lmstudio("yi-coder-9b-chat"); // Quiet good at tool use, but fails at snippet generation and edit.
+// const model = lmstudio("hammer2.1-7b"); // Errors on startup, prompt jinja template error.
+// const model = lmstudio("watt-tool-8b"); // Tool call format is not picked up.
+const model = lmstudio("hermes-3-llama-3.1-8b"); // Fast, good at tools, and almost perfect at code.
 
 async function resolveInScope(relativePath: string) {
   const cleanedPath = relativePath.replaceAll(`'`, ``);
@@ -90,17 +98,19 @@ const { textStream } = await streamText({
         return prompt;
       },
     }),
-    find_files_by_path: tool({
+    find_file: tool({
       description: `
         A tool for finding files by path.
+        Can be used to check if a file exists.
+        This is like a search function in a file explorer.
       `,
       parameters: z.object({
-        path_query: z.string(),
+        name: z.string(),
       }),
-      execute: async ({ path_query }) => {
-        console.log("\nfind_files_by_path", { path_query });
+      execute: async ({ name }) => {
+        console.log("\nfind_file", { name });
         try {
-          const glob = new Glob(`**/${path_query}`);
+          const glob = new Glob(`**/${name}`);
 
           const results = [];
           for await (const file of glob.scan(scopeFolder)) {
@@ -116,7 +126,7 @@ const { textStream } = await streamText({
         }
       },
     }),
-    find_file_paths_by_content: tool({
+    find_by_content: tool({
       description: `
         A tool for finding file paths by content.
       `,
@@ -197,6 +207,8 @@ const { textStream } = await streamText({
               Rewrite the instruction to only mention the parts of the file, not the edit request.
               and instead focus entirely on which parts of the file the instruction applies to.
               Focus on the "source"/"original" code, and not the "target"/"replacement" code.
+              The output should refer to a part of a file, not a file itself.
+              Don't be too specific, just mention the part of the file.
 
               Example:
               input:
@@ -206,6 +218,8 @@ const { textStream } = await streamText({
               relevant focus areas:
               - foo()
               - bar()
+
+              Only return the relevant focus area, and nothing else.
             `,
             prompt: `
               instruction: ${instruction}
@@ -230,7 +244,8 @@ const { textStream } = await streamText({
 
               For example, you may repeat a single function from a file of multiple functions.
 
-              Return raw unmodified code, no extra comments.
+              You can do this using the file_content. You don't need to use other tools.
+              Return raw unmodified code, NO COMMENTS OR EXTRA TEXT.
 
               example input 1:
               instruction:
@@ -295,7 +310,8 @@ const { textStream } = await streamText({
               You are a text editor.
               You take an instruction and a code snippet,
               and you you return the entire text file, but modified according to the instruction.
-              Return raw unmodified code, no extra comments.
+              Return raw code, no extra comments.
+              Be careful about making sure that the end of the code will work with the rest of the file. This means that persevering commas may be critical.
             `,
             prompt: `
               instruction: ${instruction}
@@ -348,13 +364,14 @@ const { textStream } = await streamText({
   toolChoice: "auto",
   maxSteps: 10,
   system: `
-    - You are an autonomous AI agent that uses one tool to get closer to achieving the user's goal.
+    - You are an autonomous AI agent.
     - Don't ask for user input.
     - Never ask the user questions or for clarifications.
-    - The user is not present, so you need to try to guess an action.
-    - Reply without extraneous actions.
-    - Write your thought process after using a tool.`,
-
+    - Only use tool names that actually exist.
+    - Make sure to repeat any important information to the user such as a result of a tool.
+    - Try to recover from errors.
+    - Only use one tool per response. NEVER MORE THAN ONE TOOL.
+    `,
   prompt: values.prompt,
   onStepFinish({ text, toolCalls, toolResults, finishReason, usage }) {
     console.log("\nonStepFinish", {
