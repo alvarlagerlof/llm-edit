@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { streamText, tool } from "ai";
+import { generateObject, streamObject, streamText, tool } from "ai";
 import { writeFile } from "fs/promises";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
@@ -63,28 +63,37 @@ const { textStream } = await streamText({
         return prompt;
       },
     }),
-
     find_file_paths_by_content: tool({
       description: `
         A tool for finding file paths by content.
-        The content is a substring.
-        Use this tool when you don't know exactly what file path to edit or read.
-        This tool is rarely needed.
       `,
-      parameters: z.object({ content: z.string() }),
-      execute: async ({ content }) => {
-        console.log("\nfind_file_paths_by_content", { content });
+      parameters: z.object({
+        exact_code_snippets_query: z
+          .array(z.string())
+          .describe("Exact code snippets"),
+      }),
+      execute: async ({ exact_code_snippets_query }) => {
+        console.log("\nfind_file_paths_by_content", {
+          exact_code_snippets_query,
+        });
+
         try {
           const filePaths = [];
 
-          for await (const line of $`find ${scopeFolder} -type f -name "*.ts" -o -name "*.tsx" | xargs egrep -il '${content}'`.lines()) {
-            const scopedLine = line.replaceAll(scopeFolder, "").substring(1);
-            if (scopedLine !== "") {
-              filePaths.push(scopedLine);
+          for (const query of exact_code_snippets_query) {
+            for await (const line of $`find ${scopeFolder} -type f -name "*.ts" -o -name "*.tsx" | xargs egrep -il '${query}'`.lines()) {
+              const scopedLine = line.replaceAll(scopeFolder, "").substring(1);
+              if (scopedLine !== "") {
+                filePaths.push(scopedLine);
+              }
             }
           }
 
           console.log({ filePaths });
+
+          if (filePaths.length === 0) {
+            return "No file paths found, try another query. Perhaps something shorter and more specific?";
+          }
 
           return filePaths.join("\n");
         } catch (error) {
@@ -234,14 +243,14 @@ const { textStream } = await streamText({
     "Sometimes it's good to stop after a calling a tool so that you can read its output in the next iteration. You running in a programmed loop. Stop all the time, it's ok and good.",
 
   prompt: values.prompt,
-  onStepFinish({ text, toolCalls, toolResults, finishReason, usage }) {
-    console.log("\nonStepFinish", {
-      //   text,
-      toolCalls,
-      toolResults,
-      //   finishReason,
-    });
-  },
+  // onStepFinish({ text, toolCalls, toolResults, finishReason, usage }) {
+  //   console.log("\nonStepFinish", {
+  //     //   text,
+  //     toolCalls,
+  //     toolResults,
+  //     //   finishReason,
+  //   });
+  // },
 });
 
 for await (const textPart of textStream) {
