@@ -4,10 +4,11 @@ import { writeFile } from "fs/promises";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
 import { z } from "zod";
-import { $ } from "bun";
+import { $, Glob } from "bun";
 import { replaceSnippetInText } from "./utils/replace-snippet";
 
 import { parseArgs } from "util";
+import { existsSync } from "fs";
 
 const { values } = parseArgs({
   args: Bun.argv,
@@ -42,13 +43,37 @@ const lmstudio = createOpenAICompatible({
 // const model = lmstudio("deepseek-r1-distill-qwen-7b");
 const model = lmstudio("granite-3.1-8b-instruct");
 
-function resolveInScope(relativePath: string) {
+async function resolveInScope(relativePath: string) {
   const cleanedPath = relativePath.replaceAll(`'`, ``);
 
+  let result = "";
+
   if (cleanedPath.startsWith("/")) {
-    return resolve(scopeFolder, cleanedPath.substring(1));
+    result = resolve(scopeFolder, cleanedPath.substring(1));
   }
-  return resolve(scopeFolder, cleanedPath);
+  result = resolve(scopeFolder, cleanedPath);
+
+  if (!existsSync(result)) {
+    const glob = new Glob(`**/${relativePath}`);
+
+    const results = [];
+    for await (const file of glob.scan(scopeFolder)) {
+      results.push(file);
+    }
+
+    if (results.length === 1) {
+      result = resolve(scopeFolder, results[0]);
+      return result;
+    }
+
+    if (results.length > 1) {
+      throw new Error(`Multiple files found for ${relativePath}`);
+    }
+
+    throw new Error(`File ${result} does not exist`);
+  }
+
+  return result;
 }
 
 const { textStream } = await streamText({
@@ -110,7 +135,7 @@ const { textStream } = await streamText({
       execute: async ({ path }) => {
         console.log("\nread_file", { path });
         try {
-          return await readFile(resolveInScope(path), "utf-8");
+          return await readFile(await resolveInScope(path), "utf-8");
         } catch (error) {
           // @ts-expect-error TODO: fix this
           return error.message;
@@ -130,7 +155,10 @@ const { textStream } = await streamText({
       execute: async ({ path, instruction }) => {
         console.log("\nedit_file", { path, instruction });
         try {
-          const fileContent = await readFile(resolveInScope(path), "utf-8");
+          const fileContent = await readFile(
+            await resolveInScope(path),
+            "utf-8"
+          );
 
           const { textStream: textStreamNewInstruction } = await streamText({
             model,
@@ -227,7 +255,7 @@ const { textStream } = await streamText({
             replacement: textStreamResultText,
           });
 
-          await writeFile(resolveInScope(path), newTextContent);
+          await writeFile(await resolveInScope(path), newTextContent);
 
           return `File ${path} has been edited.`;
         } catch (error) {
