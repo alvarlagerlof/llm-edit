@@ -58,7 +58,9 @@ async function resolveInScope(relativePath: string) {
 
     const results = [];
     for await (const file of glob.scan(scopeFolder)) {
-      results.push(file);
+      if (!file.includes("node_modules")) {
+        results.push(file);
+      }
     }
 
     if (results.length === 1) {
@@ -88,6 +90,32 @@ const { textStream } = await streamText({
         return prompt;
       },
     }),
+    find_files_by_path: tool({
+      description: `
+        A tool for finding files by path.
+      `,
+      parameters: z.object({
+        path_query: z.string(),
+      }),
+      execute: async ({ path_query }) => {
+        console.log("\nfind_files_by_path", { path_query });
+        try {
+          const glob = new Glob(`**/${path_query}`);
+
+          const results = [];
+          for await (const file of glob.scan(scopeFolder)) {
+            if (!file.includes("node_modules")) {
+              results.push(file);
+            }
+          }
+
+          return results.join("\n");
+        } catch (error) {
+          // @ts-expect-error TODO: fix this
+          return error.toString();
+        }
+      },
+    }),
     find_file_paths_by_content: tool({
       description: `
         A tool for finding file paths by content.
@@ -106,9 +134,9 @@ const { textStream } = await streamText({
           const filePaths = [];
 
           for (const query of exact_code_snippets_query) {
-            for await (const line of $`find ${scopeFolder} -type f -name "*.ts" -o -name "*.tsx" | xargs egrep -il '${query}'`.lines()) {
+            for await (const line of $`find ${scopeFolder} -type f -name "*.ts" -o -name "*.ts" -o -name "*.json" | xargs egrep -il '${query}'`.lines()) {
               const scopedLine = line.replaceAll(scopeFolder, "").substring(1);
-              if (scopedLine !== "") {
+              if (scopedLine !== "" && !scopedLine.includes("node_modules")) {
                 filePaths.push(scopedLine);
               }
             }
@@ -144,10 +172,12 @@ const { textStream } = await streamText({
     }),
     edit_file: tool({
       description: `
-          Edits a file based on an instruction
-          The instruction should be specific and reference clear part of the file.
-          Make sure that you know what the path is before you run this tool.
-          `,
+        Edits a file based on an instruction
+        The instruction should be specific and reference clear part of the file.
+        Make sure that you know what the path is before you run this tool.
+        Do not add example text like /path/to/ to the path. The path will be resolved in the scope of the current folder.
+        Make sure to not run this tool before you know for sure what file to edit.
+      `,
       parameters: z.object({
         path: z.string(),
         instruction: z.string(),
@@ -202,16 +232,48 @@ const { textStream } = await streamText({
 
               Return raw unmodified code, no extra comments.
 
-              example input:
-              instruction: foo()
-              file_content: export function foo() {
-                console.log("foo");
+              example input 1:
+              instruction:
+              foo()
+
+              file_content:
+              export function baz() {
+                console.log("baz");
               }
 
-              example output:
               export function foo() {
                 console.log("foo");
               }
+
+              export function bar() {
+                console.log("bar");
+              }
+
+              example output 1:
+              export function foo() {
+                console.log("foo");
+              }
+
+              example input 2:
+              instruction:
+              react-query
+
+              file_content:
+              "@redux-devtools/extension": "3.3.0",
+              "@segment/analytics-next": "1.76.1",
+              "@sentry/nextjs": "8.51.0",
+              "@stripe/react-stripe-js": "3.1.1",
+              "@stripe/stripe-js": "5.5.0",
+              "@tanstack/react-query": "5.64.2",
+              "@upstash/redis": "1.34.3",
+              "@upstash/vector": "1.2.0",
+              "@vercel/edge-config": "1.4.0",
+              "@vercel/flags": "3.0.1",
+
+              example output 2 (includes two surrounding lines for context):
+              "@stripe/stripe-js": "5.5.0",
+              "@tanstack/react-query": "5.64.2",
+              "@upstash/redis": "1.34.3",
             `,
             prompt: `
               instruction: ${newInstruction}
@@ -264,21 +326,44 @@ const { textStream } = await streamText({
         }
       },
     }),
+    get_latest_version_of_package: tool({
+      description: `
+        A tool for getting the latest version of a package.
+      `,
+      parameters: z.object({
+        package_name: z.string(),
+      }),
+      execute: async ({ package_name }) => {
+        console.log("\nget_latest_version_of_package", { package_name });
+        try {
+          const { stdout } = await $`npm view ${package_name} version`;
+          return stdout.toString("utf8");
+        } catch (error) {
+          // @ts-expect-error TODO: fix this
+          return error.toString();
+        }
+      },
+    }),
   },
   toolChoice: "auto",
   maxSteps: 10,
-  system:
-    "Sometimes it's good to stop after a calling a tool so that you can read its output in the next iteration. You running in a programmed loop. Stop all the time, it's ok and good.",
+  system: `
+    - You are an autonomous AI agent that uses one tool to get closer to achieving the user's goal.
+    - Don't ask for user input.
+    - Never ask the user questions or for clarifications.
+    - The user is not present, so you need to try to guess an action.
+    - Reply without extraneous actions.
+    - Write your thought process after using a tool.`,
 
   prompt: values.prompt,
-  // onStepFinish({ text, toolCalls, toolResults, finishReason, usage }) {
-  //   console.log("\nonStepFinish", {
-  //     //   text,
-  //     toolCalls,
-  //     toolResults,
-  //     //   finishReason,
-  //   });
-  // },
+  onStepFinish({ text, toolCalls, toolResults, finishReason, usage }) {
+    console.log("\nonStepFinish", {
+      //   text,
+      toolCalls,
+      toolResults,
+      //   finishReason,
+    });
+  },
 });
 
 for await (const textPart of textStream) {
