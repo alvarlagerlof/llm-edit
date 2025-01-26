@@ -1,14 +1,23 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { generateObject, streamObject, streamText, tool } from "ai";
+import {
+  experimental_wrapLanguageModel,
+  generateObject,
+  simulateReadableStream,
+  streamObject,
+  streamText,
+  tool,
+  type LanguageModelV1StreamPart,
+} from "ai";
 import { writeFile } from "fs/promises";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
 import { z } from "zod";
 import { $, Glob } from "bun";
 import { replaceSnippetInText } from "./utils/replace-snippet";
-
 import { parseArgs } from "util";
 import { existsSync } from "fs";
+import { createKvFileCache } from "./kv-file-cache";
+import { pathToFolder } from "./path-to-folder";
 
 const { values } = parseArgs({
   args: Bun.argv,
@@ -51,6 +60,67 @@ const lmstudio = createOpenAICompatible({
 // const model = lmstudio("watt-tool-8b"); // Tool call format is not picked up.
 const model = lmstudio("hermes-3-llama-3.1-8b"); // Fast, good at tools, and almost perfect at code.
 
+const cache = createKvFileCache({
+  name: "response-cache",
+  context: model.modelId,
+});
+
+const wrappedLanguageModel = experimental_wrapLanguageModel({
+  model,
+  middleware: {
+    wrapStream: async ({ doStream, params }) => {
+      const cacheKey = JSON.stringify(params);
+
+      // Check if the result is in the cache
+      const cached = cache.get(cacheKey);
+
+      // If cached, return a simulated ReadableStream that yields the cached result
+      if (cached !== null && cached !== undefined) {
+        // Format the timestamps in the cached response
+        const formattedChunks = (cached as LanguageModelV1StreamPart[]).map(
+          (p) => {
+            if (p.type === "response-metadata" && p.timestamp) {
+              return { ...p, timestamp: new Date(p.timestamp) };
+            } else return p;
+          }
+        );
+        return {
+          stream: simulateReadableStream({
+            initialDelayInMs: 0,
+            chunkDelayInMs: 10,
+            chunks: formattedChunks,
+          }),
+          rawCall: { rawPrompt: null, rawSettings: {} },
+        };
+      }
+
+      // If not cached, proceed with streaming
+      const { stream, ...rest } = await doStream();
+
+      const fullResponse: LanguageModelV1StreamPart[] = [];
+
+      const transformStream = new TransformStream<
+        LanguageModelV1StreamPart,
+        LanguageModelV1StreamPart
+      >({
+        transform(chunk, controller) {
+          fullResponse.push(chunk);
+          controller.enqueue(chunk);
+        },
+        flush() {
+          // Store the full response in the cache after streaming is complete
+          cache.set(cacheKey, JSON.stringify(fullResponse));
+        },
+      });
+
+      return {
+        stream: stream.pipeThrough(transformStream),
+        ...rest,
+      };
+    },
+  },
+});
+
 async function resolveInScope(relativePath: string) {
   const cleanedPath = relativePath.replaceAll(`'`, ``);
 
@@ -86,8 +156,12 @@ async function resolveInScope(relativePath: string) {
   return result;
 }
 
+const prettierBin = "/Users/alvar/.nvm/versions/node/v22.12.0/bin/prettier";
+const eslintBin = "/Users/alvar/.nvm/versions/node/v22.12.0/bin/eslint";
+const yarnBin = "/Users/alvar/.nvm/versions/node/v22.12.0/bin/yarn";
+
 const { textStream } = await streamText({
-  model,
+  model: wrappedLanguageModel,
   tools: {
     repeat_user_prompt: tool({
       description: `
@@ -201,7 +275,7 @@ const { textStream } = await streamText({
           );
 
           const { textStream: textStreamNewInstruction } = await streamText({
-            model,
+            model: wrappedLanguageModel,
             system: `
               You will receive an instruction for an edit of a file.
               Rewrite the instruction to only mention the parts of the file, not the edit request.
@@ -226,16 +300,17 @@ const { textStream } = await streamText({
             `,
           });
 
-          let newInstruction = "";
+          let newInstruction = "a few lines above + \n";
           console.log("\nbegin new instruction\n");
           for await (const textPartNewInstruction of textStreamNewInstruction) {
             process.stdout.write(textPartNewInstruction);
             newInstruction += textPartNewInstruction;
           }
+          newInstruction += " + a few lines below";
           console.log("\nend new instruction\n");
 
           const { textStream: textStreamRelevantSnippets } = await streamText({
-            model,
+            model: wrappedLanguageModel,
             system: `
               You receive an instruction and a text file containing code.
               Return a subset of the code (unmodified) that is relevant to the instruction.
@@ -265,9 +340,13 @@ const { textStream } = await streamText({
               }
 
               example output 1:
+              }
+
               export function foo() {
                 console.log("foo");
               }
+
+              export function bar() {
 
               example input 2:
               instruction:
@@ -289,6 +368,10 @@ const { textStream } = await streamText({
               "@stripe/stripe-js": "5.5.0",
               "@tanstack/react-query": "5.64.2",
               "@upstash/redis": "1.34.3",
+
+              Notice how both example outputs contain a little bit of lines above and below the relevant snippet for context. This is important.
+              It is critical that the snippet exists in the file, and isn't shortened or changed in the middle.
+              DO NOT SKIP OVER ANY LINES.
             `,
             prompt: `
               instruction: ${newInstruction}
@@ -305,7 +388,7 @@ const { textStream } = await streamText({
           console.log("\nend snippet\n");
 
           const { textStream: textStreamResult } = await streamText({
-            model,
+            model: wrappedLanguageModel,
             system: `
               You are a text editor.
               You take an instruction and a code snippet,
@@ -360,6 +443,91 @@ const { textStream } = await streamText({
         }
       },
     }),
+    lint: tool({
+      description: `
+        A tool for linting a file.
+        It can check if there are any errors/warnings in the file.
+      `,
+      parameters: z.object({
+        path: z.string(),
+      }),
+      execute: async ({ path }) => {
+        console.log("\nlint", { path });
+        try {
+          const resolvedPath = await resolveInScope(path);
+
+          const { stdout, stderr } =
+            await $`${prettierBin} --check ${resolvedPath} `
+              .cwd(pathToFolder(resolvedPath))
+              .nothrow()
+              .quiet();
+
+          if (stderr) {
+            return stderr.toString("utf8");
+          }
+
+          return stdout.toString("utf8");
+        } catch (error) {
+          // @ts-expect-error TODO: fix this
+          return error.toString();
+        }
+      },
+    }),
+    format: tool({
+      description: `
+        A tool for formatting a file.
+        May be useful for fixing some linting errors.
+        If another tool fails to run, try this one.
+      `,
+      parameters: z.object({
+        path: z.string(),
+      }),
+      execute: async ({ path }) => {
+        console.log("\nformat", { path });
+        try {
+          const resolvedPath = await resolveInScope(path);
+
+          console.log({ resolvedPath });
+
+          const { stdout, stderr } =
+            await $`${prettierBin} --write ${resolvedPath}`
+              .cwd(pathToFolder(resolvedPath))
+              .nothrow()
+              .quiet();
+
+          if (stderr) {
+            return stderr.toString("utf8");
+          }
+
+          return stdout.toString("utf8");
+        } catch (error) {
+          // @ts-expect-error TODO: fix this
+          return error.toString();
+        }
+      },
+    }),
+    install: tool({
+      description: `
+        A tool for running npm/yarn install.
+      `,
+      parameters: z.object({}),
+      execute: async () => {
+        console.log("\ninstall");
+        try {
+          const resolvedPath = await resolveInScope(".");
+
+          const output = await $`${yarnBin} install --json`
+            .cwd(pathToFolder(resolvedPath))
+            .nothrow()
+            .text();
+
+          return output;
+        } catch (error) {
+          // @ts-expect-error TODO: fix this
+          return error.toString();
+        }
+      },
+    }),
   },
   toolChoice: "auto",
   maxSteps: 10,
@@ -367,10 +535,12 @@ const { textStream } = await streamText({
     - You are an autonomous AI agent.
     - Don't ask for user input.
     - Never ask the user questions or for clarifications.
+    - After doing an edit, it's good to check that the file lints okay. If not, it has to be fixed.
+    - After editing a package.json file, you need to run the install tool.
     - Only use tool names that actually exist.
     - Make sure to repeat any important information to the user such as a result of a tool.
     - Try to recover from errors.
-    - Only use one tool per response. NEVER MORE THAN ONE TOOL.
+    - Only use one tool per response. NEVER MORE THAN ONE TOOL. JUST ONE AT A TIME.
     `,
   prompt: values.prompt,
   onStepFinish({ text, toolCalls, toolResults, finishReason, usage }) {
