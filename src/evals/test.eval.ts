@@ -4,11 +4,11 @@ import {
   createMemoryFileSystem,
   runEvalTask,
   type EvalInput,
-  type EvalOutput,
+  type EvalExpected,
   scorers,
 } from "./test-helpers";
 
-evalite<EvalInput, EvalOutput>("Update README.md", {
+evalite<EvalInput, EvalExpected>("Update README.md", {
   data: async () => {
     return [
       {
@@ -43,7 +43,7 @@ evalite<EvalInput, EvalOutput>("Update README.md", {
   scorers,
 });
 
-evalite<EvalInput, EvalOutput>("Puzzle", {
+evalite<EvalInput, EvalExpected>("Puzzle", {
   data: async () => {
     return [
       {
@@ -80,7 +80,7 @@ evalite<EvalInput, EvalOutput>("Puzzle", {
   scorers,
 });
 
-evalite<EvalInput, EvalOutput>("Rename function", {
+evalite<EvalInput, EvalExpected>("Rename function", {
   data: async () => {
     return [
       {
@@ -122,7 +122,7 @@ evalite<EvalInput, EvalOutput>("Rename function", {
   scorers,
 });
 
-evalite<EvalInput, EvalOutput>("Update dependency to latest version", {
+evalite<EvalInput, EvalExpected>("Update dependency to latest version", {
   data: async () => {
     return [
       {

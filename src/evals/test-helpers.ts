@@ -9,6 +9,8 @@ import { getCurrentModel } from "../models";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { aiEdit } from "..";
+import eslint from "@eslint/js";
+import tseslint from "typescript-eslint";
 
 const prettierOptions = {
   printWidth: 100,
@@ -20,7 +22,9 @@ const prettierOptions = {
 export type MemoryFileSystem = Record<string, string>;
 
 export type EvalInput = { prompt: string; memoryFileSystem: MemoryFileSystem };
-export type EvalOutput = { memoryFileSystem: MemoryFileSystem };
+export type EvalExpected = {
+  memoryFileSystem: MemoryFileSystem;
+};
 
 export async function createMemoryFileSystem(
   memoryFileSystem: MemoryFileSystem,
@@ -33,15 +37,14 @@ export async function createMemoryFileSystem(
   }
 ) {
   if (addEslintConfig) {
-    memoryFileSystem["eslint.config.js"] = `
-    export default [
-      {
-          rules: {
-              semi: "error",
-              "prefer-const": "error"
-          }
-      }
-    ];`;
+    memoryFileSystem["eslint.config.js"] = `export default [
+  {
+    rules: {
+      semi: "error",
+      "prefer-const": "error"
+    }
+  }
+];`;
   }
 
   if (formatFiles) {
@@ -106,7 +109,7 @@ export async function runEvalTask(input: EvalInput) {
   };
 }
 
-export const LevenshteinMultiFile = createScorer<EvalInput, EvalOutput>({
+export const LevenshteinMultiFile = createScorer<EvalInput, EvalExpected>({
   name: "Levenshtein",
   description:
     "A simple scorer that uses the Levenshtein distance to compare two file systems.",
@@ -162,7 +165,7 @@ export const LevenshteinMultiFile = createScorer<EvalInput, EvalOutput>({
   },
 });
 
-export const PrettierMultiFile = createScorer<EvalInput, EvalOutput>({
+export const PrettierMultiFile = createScorer<EvalInput, EvalExpected>({
   name: "Prettier",
   description:
     "A simple scorer checks if the output file system is correctly formatted according to Prettier.",
@@ -201,7 +204,7 @@ export const PrettierMultiFile = createScorer<EvalInput, EvalOutput>({
   },
 });
 
-export const ESLintMultiFile = createScorer<EvalInput, EvalOutput>({
+export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
   name: "ESLint",
   description:
     "A simple scorer checks if the output file system is correctly formatted according to ESLint.",
@@ -217,11 +220,16 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalOutput>({
       }
 
       try {
-        const eslint = new ESLint({
+        const eslintInstance = new ESLint({
           baseConfig: {},
           overrideConfigFile: true,
+          // @ts-expect-error Types complain, but it works.
+          overrideConfig: tseslint.config(
+            eslint.configs.recommended,
+            tseslint.configs.recommended
+          ),
         });
-        const report = await eslint.lintText(outputText, {});
+        const report = await eslintInstance.lintText(outputText, {});
         if (report.length !== 1) {
           scores[outputFileName] = {
             score: 0,
@@ -263,7 +271,7 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalOutput>({
 
 export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
   EvalInput,
-  EvalOutput
+  EvalExpected
 >({
   name: "LLM",
   description:
