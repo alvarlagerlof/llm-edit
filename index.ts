@@ -61,14 +61,12 @@ const { textStream } = await streamText({
       }),
       execute: async ({ name }) => {
         console.log("\nfind_file", { name });
-        try {
+
+        return returnErrorsAsText(async () => {
           const results = await scan({ scopeFolder, relativePath: name });
 
           return results.join("\n");
-        } catch (error) {
-          // @ts-expect-error TODO: fix this
-          return error.toString();
-        }
+        });
       },
     }),
     find_by_content: tool({
@@ -85,7 +83,7 @@ const { textStream } = await streamText({
           exact_code_snippets_query,
         });
 
-        try {
+        return returnErrorsAsText(async () => {
           const filePaths = [];
 
           for (const query of exact_code_snippets_query) {
@@ -104,10 +102,7 @@ const { textStream } = await streamText({
           }
 
           return filePaths.join("\n");
-        } catch (error) {
-          // @ts-expect-error TODO: fix this
-          return error.toString();
-        }
+        });
       },
     }),
     read_file: tool({
@@ -117,15 +112,12 @@ const { textStream } = await streamText({
       parameters: z.object({ path: z.string() }),
       execute: async ({ path }) => {
         console.log("\nread_file", { path });
-        try {
+        return returnErrorsAsText(async () => {
           return await readFile(
             await resolveInScope({ scopeFolder, relativePath: path }),
             "utf-8"
           );
-        } catch (error) {
-          // @ts-expect-error TODO: fix this
-          return error.message;
-        }
+        });
       },
     }),
     edit_file: tool({
@@ -142,7 +134,7 @@ const { textStream } = await streamText({
       }),
       execute: async ({ path, instruction }) => {
         console.log("\nedit_file", { path, instruction });
-        try {
+        return returnErrorsAsText(async () => {
           const fileContent = await readFile(
             await resolveInScope({ scopeFolder, relativePath: path }),
             "utf-8"
@@ -296,10 +288,7 @@ const { textStream } = await streamText({
           );
 
           return `File ${path} has been edited.`;
-        } catch (error) {
-          // @ts-expect-error TODO: fix this
-          return error.toString();
-        }
+        });
       },
     }),
     get_latest_version_of_package: tool({
@@ -311,13 +300,10 @@ const { textStream } = await streamText({
       }),
       execute: async ({ package_name }) => {
         console.log("\nget_latest_version_of_package", { package_name });
-        try {
+        return returnErrorsAsText(async () => {
           const { stdout } = await $`npm view ${package_name} version`;
           return stdout.toString("utf8");
-        } catch (error) {
-          // @ts-expect-error TODO: fix this
-          return error.toString();
-        }
+        });
       },
     }),
     lint: tool({
@@ -330,7 +316,7 @@ const { textStream } = await streamText({
       }),
       execute: async ({ path }) => {
         console.log("\nlint", { path });
-        try {
+        return returnErrorsAsText(async () => {
           const resolvedPath = await resolveInScope({
             scopeFolder,
             relativePath: path,
@@ -347,10 +333,7 @@ const { textStream } = await streamText({
           }
 
           return stdout.toString("utf8");
-        } catch (error) {
-          // @ts-expect-error TODO: fix this
-          return error.toString();
-        }
+        });
       },
     }),
     format: tool({
@@ -364,7 +347,7 @@ const { textStream } = await streamText({
       }),
       execute: async ({ path }) => {
         console.log("\nformat", { path });
-        try {
+        return returnErrorsAsText(async () => {
           const resolvedPath = await resolveInScope({
             scopeFolder,
             relativePath: path,
@@ -381,10 +364,7 @@ const { textStream } = await streamText({
           }
 
           return stdout.toString("utf8");
-        } catch (error) {
-          // @ts-expect-error TODO: fix this
-          return error.toString();
-        }
+        });
       },
     }),
     install: tool({
@@ -394,7 +374,7 @@ const { textStream } = await streamText({
       parameters: z.object({}),
       execute: async () => {
         console.log("\ninstall");
-        try {
+        return returnErrorsAsText(async () => {
           const resolvedPath = await resolveInScope({
             scopeFolder,
             relativePath: ".",
@@ -406,10 +386,7 @@ const { textStream } = await streamText({
             .text();
 
           return output;
-        } catch (error) {
-          // @ts-expect-error TODO: fix this
-          return error.toString();
-        }
+        });
       },
     }),
   },
@@ -437,6 +414,17 @@ const { textStream } = await streamText({
     });
   },
 });
+
+async function returnErrorsAsText(functionToRun: () => Promise<string>) {
+  try {
+    return await functionToRun();
+  } catch (error) {
+    if (error instanceof Error) {
+      return `${error.name}: ${error.message}`;
+    }
+    return String(error);
+  }
+}
 
 for await (const textPart of textStream) {
   process.stdout.write(textPart);
