@@ -15,6 +15,9 @@ const prettierOptions = {
 
 export type MemoryFileSystem = Record<string, string>;
 
+export type EvalInput = { prompt: string; memoryFileSystem: MemoryFileSystem };
+export type EvalOutput = { memoryFileSystem: MemoryFileSystem };
+
 export async function createMemoryFileSystem(
   memoryFileSystem: MemoryFileSystem,
   {
@@ -85,10 +88,7 @@ export async function createTemporaryFileSystem() {
   };
 }
 
-export const LevenshteinMultiFile = createScorer<
-  MemoryFileSystem,
-  MemoryFileSystem
->({
+export const LevenshteinMultiFile = createScorer<EvalInput, EvalOutput>({
   name: "Levenshtein",
   description:
     "A simple scorer that uses the Levenshtein distance to compare two file systems.",
@@ -104,8 +104,10 @@ export const LevenshteinMultiFile = createScorer<
 
     const scores: Record<string, { score: number; meta: any }> = {};
 
-    for (const [outputFileName, outputText] of Object.entries(output)) {
-      if (!expected[outputFileName]) {
+    for (const [outputFileName, outputText] of Object.entries(
+      output.memoryFileSystem
+    )) {
+      if (!expected.memoryFileSystem[outputFileName]) {
         scores[outputFileName] = {
           score: 0,
           meta: `Expected file ${outputFileName} not found`,
@@ -114,7 +116,7 @@ export const LevenshteinMultiFile = createScorer<
       }
       const score = await Levenshtein({
         output: outputText,
-        expected: expected[outputFileName],
+        expected: expected.memoryFileSystem[outputFileName],
       });
       if (!score.score) {
         scores[outputFileName] = {
@@ -142,17 +144,16 @@ export const LevenshteinMultiFile = createScorer<
   },
 });
 
-export const PrettierMultiFile = createScorer<
-  MemoryFileSystem,
-  MemoryFileSystem
->({
+export const PrettierMultiFile = createScorer<EvalInput, EvalOutput>({
   name: "Prettier",
   description:
     "A simple scorer checks if the output file system is correctly formatted according to Prettier.",
   scorer: async ({ output }) => {
     const scores: Record<string, { score: number; meta: string | null }> = {};
 
-    for (const [outputFileName, outputText] of Object.entries(output)) {
+    for (const [outputFileName, outputText] of Object.entries(
+      output.memoryFileSystem
+    )) {
       try {
         const valid = await check(outputText, {
           ...prettierOptions,
@@ -182,57 +183,57 @@ export const PrettierMultiFile = createScorer<
   },
 });
 
-export const ESLintMultiFile = createScorer<MemoryFileSystem, MemoryFileSystem>(
-  {
-    name: "ESLint",
-    description:
-      "A simple scorer checks if the output file system is correctly formatted according to ESLint.",
-    scorer: async ({ output }) => {
-      const scores: Record<string, { score: number; meta: any }> = {};
+export const ESLintMultiFile = createScorer<EvalInput, EvalOutput>({
+  name: "ESLint",
+  description:
+    "A simple scorer checks if the output file system is correctly formatted according to ESLint.",
+  scorer: async ({ output }) => {
+    const scores: Record<string, { score: number; meta: any }> = {};
 
-      for (const [outputFileName, outputText] of Object.entries(output)) {
-        try {
-          const eslint = new ESLint({
-            baseConfig: {},
-            overrideConfigFile: true,
-          });
-          const report = await eslint.lintText(outputText, {});
-          if (report.length !== 1) {
-            scores[outputFileName] = {
-              score: 0,
-              meta: `Unexpected report length: ${report.length}`,
-            };
-            continue;
-          }
-          const reportItem = report[0];
-          if (reportItem.errorCount > 0) {
-            scores[outputFileName] = {
-              score: 0,
-              meta: reportItem.messages,
-            };
-            continue;
-          }
-          scores[outputFileName] = { score: 1, meta: null };
-        } catch (error) {
-          if (error instanceof Error) {
-            scores[outputFileName] = {
-              score: 0,
-              meta: `${error.name}: ${error.message}`,
-            };
-          }
-          scores[outputFileName] = { score: 0, meta: String(error) };
+    for (const [outputFileName, outputText] of Object.entries(
+      output.memoryFileSystem
+    )) {
+      try {
+        const eslint = new ESLint({
+          baseConfig: {},
+          overrideConfigFile: true,
+        });
+        const report = await eslint.lintText(outputText, {});
+        if (report.length !== 1) {
+          scores[outputFileName] = {
+            score: 0,
+            meta: `Unexpected report length: ${report.length}`,
+          };
+          continue;
         }
+        const reportItem = report[0];
+        if (reportItem.errorCount > 0) {
+          scores[outputFileName] = {
+            score: 0,
+            meta: reportItem.messages,
+          };
+          continue;
+        }
+        scores[outputFileName] = { score: 1, meta: null };
+      } catch (error) {
+        if (error instanceof Error) {
+          scores[outputFileName] = {
+            score: 0,
+            meta: `${error.name}: ${error.message}`,
+          };
+        }
+        scores[outputFileName] = { score: 0, meta: String(error) };
       }
+    }
 
-      return {
-        score:
-          Object.values(scores)
-            .map((value) => value.score)
-            .reduce((a, b) => a + b, 0) / Object.keys(scores).length,
-        metadata: {
-          ...scores,
-        },
-      };
-    },
-  }
-);
+    return {
+      score:
+        Object.values(scores)
+          .map((value) => value.score)
+          .reduce((a, b) => a + b, 0) / Object.keys(scores).length,
+      metadata: {
+        ...scores,
+      },
+    };
+  },
+});
