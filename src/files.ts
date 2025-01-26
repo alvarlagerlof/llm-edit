@@ -35,7 +35,7 @@ export async function resolveInScope({
       throw new Error(`Multiple files found for ${relativePath}`);
     }
 
-    throw new Error(`File ${result} does not exist`);
+    throw new Error(`File ${relativePath} does not exist`);
   }
 
   return result;
