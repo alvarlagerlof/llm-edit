@@ -48,10 +48,6 @@ evalite<EvalInput, EvalOutput>("Puzzle", {
     return [
       {
         input: {
-          //   prompt:
-          //     "Read PROBLEM.md. Then read SOLUTION.md." +
-          //     "Keep in mind that when calling a tool, important information to be able to complete the task has to be provided. " +
-          //     "Complete the full task on your own without user input. You may use further tools to complete the task.",
           prompt:
             "You are on a quest to solve a puzzle. You have file SECRET.md and file SAVE_ANSWER_HERE.md available. GO!",
           memoryFileSystem: await createMemoryFileSystem(
