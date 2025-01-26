@@ -29,6 +29,7 @@ export function getCurrentModel() {
   // const model = lmstudio("mistral-nemo-instruct-2407"); // Slow, often fails to call tools.
   // const model = lmstudio("qwen2.5-14b-instruct@q2_k"); // Fails to call tools and object generation.
   // const model = lmstudio("qwen2.5-14b-instruct@q4_0"); // Slow, fails at object generation.
+  // const model = lmstudio("mlx-community/hermes-3-llama-3.1-8b"); // Fast, maybe faster than its sibling. But perhaps less accurate?
 
   const cache = createKvFileCache({
     name: "response-cache",
@@ -59,7 +60,7 @@ export function getCurrentModel() {
 
         const result = await doGenerate();
 
-        cache.set(cacheKey, result);
+        await cache.set(cacheKey, result);
 
         return result;
       },
@@ -109,9 +110,9 @@ export function getCurrentModel() {
 
             logChunk(chunk);
           },
-          flush() {
+          async flush() {
             // Store the full response in the cache after streaming is complete
-            cache.set(cacheKey, fullResponse);
+            await cache.set(cacheKey, fullResponse);
           },
         });
 
