@@ -284,7 +284,7 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
   name: "LLM",
   description:
     "A simple scorer checks the output file system matches the goals set in the prompt.",
-  scorer: async ({ input, output }) => {
+  scorer: async ({ input, expected, output }) => {
     function printMemoryFileSystem(memoryFileSystem: MemoryFileSystem) {
       let printedOutputFileSystem = "";
 
@@ -318,6 +318,8 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
           - Syntax errors in the output.
           - Likelihood of the output to be executable (if it is code).
           - Unrelated files should not be changed.
+          - Additional newlines at the end DO NOT LOWER THE SCORE.
+          - If the actual output matches the expected output, give a score of 100.
 
           When there is any issue that leads the the goal not being achieved, lower the score dramatically (below 50 is fine).
           At the same time, when the goal is achieved fully without issues, give a score of 100.
@@ -336,7 +338,10 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
           input files:
           ${printMemoryFileSystem(input.memoryFileSystem)}
 
-          output files:
+          expected output files:
+          ${printMemoryFileSystem(expected!.memoryFileSystem)}
+
+          actual output files:
           ${printMemoryFileSystem(output.memoryFileSystem)}
         `,
         schema: z.object({

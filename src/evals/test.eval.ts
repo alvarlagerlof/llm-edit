@@ -20,7 +20,7 @@ evalite<EvalInput, EvalExpected>("Update README.md", {
               "README.md": `# Todo app\n\nDescription TBD.`,
             },
             {
-              addEslintConfig: true,
+              addEslintConfig: false,
               formatFiles: true,
             }
           ),
@@ -31,7 +31,7 @@ evalite<EvalInput, EvalExpected>("Update README.md", {
               "README.md": `# Calculator app\n\nCalculates stuff.`,
             },
             {
-              addEslintConfig: true,
+              addEslintConfig: false,
               formatFiles: true,
             }
           ),
@@ -56,7 +56,7 @@ evalite<EvalInput, EvalExpected>("Puzzle", {
               "SAVE_ANSWER_HERE.md": `The puzzle is solved by saving the secret number here: `,
             },
             {
-              addEslintConfig: true,
+              addEslintConfig: false,
               formatFiles: true,
             }
           ),
@@ -68,7 +68,7 @@ evalite<EvalInput, EvalExpected>("Puzzle", {
               "SAVE_ANSWER_HERE.md": `The puzzle is solved by saving the secret number here: 74`,
             },
             {
-              addEslintConfig: true,
+              addEslintConfig: false,
               formatFiles: true,
             }
           ),
@@ -96,7 +96,7 @@ evalite<EvalInput, EvalExpected>("Rename function", {
                     `,
             },
             {
-              addEslintConfig: true,
+              addEslintConfig: false,
               formatFiles: true,
             }
           ),
@@ -112,7 +112,7 @@ evalite<EvalInput, EvalExpected>("Rename function", {
                     `,
             },
             {
-              addEslintConfig: true,
+              addEslintConfig: false,
               formatFiles: true,
             }
           ),
@@ -146,7 +146,7 @@ Take one thing at a time and report back.`,
               `,
             },
             {
-              addEslintConfig: true,
+              addEslintConfig: false,
               formatFiles: true,
             }
           ),
@@ -165,7 +165,7 @@ Take one thing at a time and report back.`,
               `,
             },
             {
-              addEslintConfig: true,
+              addEslintConfig: false,
               formatFiles: true,
             }
           ),
