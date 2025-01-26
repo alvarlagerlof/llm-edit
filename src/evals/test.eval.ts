@@ -40,7 +40,7 @@ evalite<MemoryFileSystem, MemoryFileSystem>("Edit file", {
     await aiEdit({
       folder: temporaryFileSystem.workingDirectory,
       prompt:
-        "In README.md at the root (relative), change the title of the markdown file 'Todo app' -> 'Calculator app'. Then below the title, change the description to be 'Calculates stuff.'",
+        "In README.md, change the title of the markdown file 'Todo app' -> 'Calculator app'. Then below the title, change the description to be 'Calculates stuff.'",
     });
 
     return temporaryFileSystem.readToMemoryFileSystem();

@@ -1,6 +1,7 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import {
   experimental_wrapLanguageModel,
+  type LanguageModelV1,
   type LanguageModelV1StreamPart,
   simulateReadableStream,
 } from "ai";
@@ -31,6 +32,31 @@ export function getCurrentModel() {
   const wrappedLanguageModel = experimental_wrapLanguageModel({
     model,
     middleware: {
+      wrapGenerate: async ({ doGenerate, params }) => {
+        const cacheKey = JSON.stringify(params);
+
+        const cached = (await cache.get(cacheKey)) as Awaited<
+          ReturnType<LanguageModelV1["doGenerate"]>
+        > | null;
+
+        if (cached !== null) {
+          return {
+            ...cached,
+            response: {
+              ...cached.response,
+              timestamp: cached?.response?.timestamp
+                ? new Date(cached?.response?.timestamp)
+                : undefined,
+            },
+          };
+        }
+
+        const result = await doGenerate();
+
+        cache.set(cacheKey, result);
+
+        return result;
+      },
       wrapStream: async ({ doStream, params }) => {
         const cacheKey = JSON.stringify(params);
 
@@ -79,7 +105,7 @@ export function getCurrentModel() {
           },
           flush() {
             // Store the full response in the cache after streaming is complete
-            cache.set(cacheKey, JSON.stringify(fullResponse));
+            cache.set(cacheKey, fullResponse);
           },
         });
 
