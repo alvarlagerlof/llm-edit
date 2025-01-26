@@ -14,7 +14,7 @@ evalite<EvalInput, EvalExpected>("Update README.md", {
       {
         input: {
           prompt:
-            "In README.md, change the title of the markdown file 'Todo app' -> 'Calculator app'. Then below the title, change the description to be 'Calculates stuff.'",
+            "In README.md, change the title of the markdown file 'Todo app' -> 'Calculator app'. After the title, change the description to 'Calculates stuff.'",
           memoryFileSystem: await createMemoryFileSystem(
             {
               "README.md": `# Todo app\n\nDescription TBD.`,
@@ -129,12 +129,10 @@ evalite<EvalInput, EvalExpected>("Update dependency to latest version", {
     return [
       {
         input: {
-          prompt: `
-            In package.json, update eslint-plugin-react-compiler to the latest version.
-            ou may need to find out what the latest version is.
-            Proceed without user input until the full task is completed.
-            Take one thing at a time and report back.
-            `,
+          prompt: `In package.json, update eslint-plugin-react-compiler to the latest version.
+ou may need to find out what the latest version is.
+Proceed without user input until the full task is completed.
+Take one thing at a time and report back.`,
           memoryFileSystem: await createMemoryFileSystem(
             {
               "package.json": `
