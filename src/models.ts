@@ -15,16 +15,20 @@ export function getCurrentModel() {
     baseURL: "http://localhost:1234/v1",
   });
 
-  // const model = lmstudio("deepseek-r1-distill-qwen-7b"); // Calls the same tool many times
-  // const model = lmstudio("granite-3.1-8b-instruct"); // Pretty good
-  // const model = lmstudio("llama-3.2-3b-instruct"); // Fails to use tools
-  // const model = lmstudio("qwen2.5-coder-3b-instruct"); // Fails to use tools
+  // const model = lmstudio("deepseek-r1-distill-qwen-7b"); // Calls the same tool many times.
+  // const model = lmstudio("granite-3.1-8b-instruct"); // Pretty good. - FAV
+  // const model = lmstudio("llama-3.2-3b-instruct"); // Fails to use tools.
+  // const model = lmstudio("qwen2.5-coder-3b-instruct"); // Fails to use tools.
   // const model = lmstudio("gemma-2-2b-it"); // Fast, somewhat capable but not for complex tasks.
   // const model = lmstudio("gemma-2-9b-it"); // Quite fast, but runs multiple tools at once.
   // const model = lmstudio("yi-coder-9b-chat"); // Quiet good at tool use, but fails at snippet generation and edit.
   // const model = lmstudio("hammer2.1-7b"); // Errors on startup, prompt jinja template error.
   // const model = lmstudio("watt-tool-8b"); // Tool call format is not picked up.
-  const model = lmstudio("hermes-3-llama-3.1-8b"); // Fast, good at tools, and almost perfect at code.
+  const model = lmstudio("hermes-3-llama-3.1-8b"); // Fast, good at tools, and almost perfect at code. - FAV
+  // const model = lmstudio("hermes-3-llama-3.2-3b");  // Bad, fails to call tools.
+  // const model = lmstudio("mistral-nemo-instruct-2407"); // Slow, often fails to call tools.
+  // const model = lmstudio("qwen2.5-14b-instruct@q2_k"); // Fails to call tools and object generation.
+  // const model = lmstudio("qwen2.5-14b-instruct@q4_0"); // Slow, fails at object generation.
 
   const cache = createKvFileCache({
     name: "response-cache",
