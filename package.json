@@ -2,17 +2,21 @@
   "name": "ai-edit",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "eval:dev": "evalite watch"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@ai-sdk/openai-compatible": "^0.1.3",
+    "@types/bun": "latest",
+    "ai": "^4.1.4",
+    "autoevals": "^0.0.118",
+    "bun": "",
+    "evalite": "^0.8.2",
+    "mathjs": "^14.1.0",
+    "vitest": "^3.0.4",
+    "zod": "^3.24.1"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "@ai-sdk/openai-compatible": "^0.1.3",
-    "ai": "^4.1.4",
-    "bun": "",
-    "mathjs": "^14.1.0",
-    "zod": "^3.24.1"
   }
 }
