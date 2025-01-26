@@ -149,7 +149,7 @@ export async function aiEdit({
               You will receive an instruction for an edit of a file.
               Rewrite the instruction to only mention the parts of the file, not the edit request.
               and instead focus entirely on which parts of the file the instruction applies to.
-              Focus on the "source"/"original" code, and not the "target"/"replacement" code.
+              Focus on the "source"/"original" text, and not the "target"/"replacement" text.
               The output should refer to a part of a file, not a file itself.
               Don't be too specific, just mention the part of the file.
 
@@ -182,15 +182,15 @@ export async function aiEdit({
               {
                 model,
                 system: `
-              You receive an instruction and a text file containing code.
-              Return a subset of the code (unmodified) that is relevant to the instruction.
+              You receive an instruction and a text file.
+              Return a subset of the text (unmodified) that is relevant to the instruction.
               Do not change the snippet in any way.
               Don't include anything else than the snippet.
 
               For example, you may repeat a single function from a file of multiple functions.
 
               You can do this using the file_content. You don't need to use other tools.
-              Return raw unmodified code, NO COMMENTS OR EXTRA TEXT.
+              Return raw unmodified text, NO COMMENTS OR EXTRA TEXT.
 
               example input 1:
               instruction:
@@ -263,25 +263,25 @@ export async function aiEdit({
               model,
               system: `
               You are a text editor.
-              You take an instruction and a code snippet,
+              You take an instruction and a text snippet,
               and you you return the entire text file, but modified according to the instruction.
-              Return raw code, no extra comments.
-              Be careful about making sure that the end of the code will work with the rest of the file. This means that persevering commas may be critical.
+              Return raw text, no extra comments.
+              Be careful about making sure that the end of the text will work with the rest of the file. This means that persevering commas may be critical.
             `,
               prompt: `
               file_path: ${path}
               instruction: ${instruction}
-              code_snippet: ${relevantSnippetText}
+              text_snippet: ${relevantSnippetText}
             `,
             });
 
             let textStreamResultText = "";
-            console.log("\nbegin code\n");
+            console.log("\nbegin result\n");
             for await (const textPartResult of textStreamResult) {
               process.stdout.write(textPartResult);
               textStreamResultText += textPartResult;
             }
-            console.log("\nend code\n");
+            console.log("\nend result\n");
 
             const newTextContent = replaceSnippetInText({
               text: fileContent,
