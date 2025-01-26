@@ -1,5 +1,5 @@
 import { Levenshtein } from "autoevals";
-import { createScorer } from "evalite";
+import { createScorer, type Evalite } from "evalite";
 import { writeFile, mkdtemp, readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -14,6 +14,7 @@ import tseslint from "typescript-eslint";
 import globals from "globals";
 import { pathToFolder } from "../files";
 import { mkdir } from "fs/promises";
+import { createKvFileCache } from "../kv-file-cache";
 
 const prettierOptions = {
   printWidth: 100,
@@ -181,11 +182,25 @@ export const LevenshteinMultiFile = createScorer<EvalInput, EvalExpected>({
   },
 });
 
+const prettierCache = createKvFileCache({
+  name: "prettier-cache",
+});
+
 export const PrettierMultiFile = createScorer<EvalInput, EvalExpected>({
   name: "Prettier",
   description:
     "A simple scorer checks if the output file system is correctly formatted according to Prettier.",
   scorer: async ({ output }) => {
+    const prettierCacheKey = JSON.stringify({ output, prettierOptions });
+
+    const cached = (await prettierCache.get(
+      prettierCacheKey
+    )) as Evalite.UserProvidedScoreWithMetadata;
+
+    if (cached) {
+      return cached;
+    }
+
     const scores: Record<string, { score: number; error?: any }> = {};
 
     for (const [outputFileName, outputText] of Object.entries(
@@ -213,7 +228,7 @@ export const PrettierMultiFile = createScorer<EvalInput, EvalExpected>({
       }
     }
 
-    return {
+    const result = {
       score:
         Object.values(scores)
           .map((value) => value.score)
@@ -222,7 +237,15 @@ export const PrettierMultiFile = createScorer<EvalInput, EvalExpected>({
         ...scores,
       },
     };
+
+    await prettierCache.set(prettierCacheKey, result);
+
+    return result;
   },
+});
+
+const eslintCache = createKvFileCache({
+  name: "eslint-cache",
 });
 
 export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
@@ -230,6 +253,33 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
   description:
     "A simple scorer checks if the output file system is correctly formatted according to ESLint.",
   scorer: async ({ output }) => {
+    const eslintOptions: ESLint.Options = {
+      baseConfig: {},
+      overrideConfigFile: true,
+      // @ts-expect-error Types complain, but it works.
+      overrideConfig: tseslint.config(
+        eslint.configs.recommended,
+        tseslint.configs.recommended,
+        {
+          languageOptions: {
+            globals: {
+              ...globals.node,
+            },
+          },
+        }
+      ),
+    };
+
+    const eslintCacheKey = JSON.stringify({ output, eslintOptions });
+
+    const cached = (await eslintCache.get(
+      eslintCacheKey
+    )) as Evalite.UserProvidedScoreWithMetadata;
+
+    if (cached) {
+      return cached;
+    }
+
     const scores: Record<string, { score: number; error?: any }> = {};
 
     for (const [outputFileName, outputText] of Object.entries(
@@ -241,22 +291,7 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
       }
 
       try {
-        const eslintInstance = new ESLint({
-          baseConfig: {},
-          overrideConfigFile: true,
-          // @ts-expect-error Types complain, but it works.
-          overrideConfig: tseslint.config(
-            eslint.configs.recommended,
-            tseslint.configs.recommended,
-            {
-              languageOptions: {
-                globals: {
-                  ...globals.node,
-                },
-              },
-            }
-          ),
-        });
+        const eslintInstance = new ESLint(eslintOptions);
         const report = await eslintInstance.lintText(outputText, {});
         if (report.length !== 1) {
           scores[outputFileName] = {
@@ -285,7 +320,7 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
       }
     }
 
-    return {
+    const result = {
       score:
         Object.values(scores)
           .map((value) => value.score)
@@ -294,6 +329,10 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
         ...scores,
       },
     };
+
+    await eslintCache.set(eslintCacheKey, result);
+
+    return result;
   },
 });
 

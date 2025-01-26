@@ -6,10 +6,10 @@ import { pathToFolder } from "./files";
 
 export function createKvFileCache({
   name,
-  context,
+  context = "",
 }: {
   name: string;
-  context: string;
+  context?: string;
 }) {
   const dbFilePath = resolve(
     cwd(),
