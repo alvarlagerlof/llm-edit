@@ -8,7 +8,7 @@ import {
   scorers,
 } from "./test-helpers";
 
-evalite<EvalInput, EvalOutput>("Edit README.md", {
+evalite<EvalInput, EvalOutput>("Update README.md", {
   data: async () => {
     return [
       {
@@ -43,7 +43,7 @@ evalite<EvalInput, EvalOutput>("Edit README.md", {
   scorers,
 });
 
-evalite<EvalInput, EvalOutput>("Copy solution from file", {
+evalite<EvalInput, EvalOutput>("Copy solution from file to other file", {
   data: async () => {
     return [
       {
