@@ -70,8 +70,6 @@ export function getBinaries() {
     .toString()
     .split("\n");
 
-  console.log({ prettier, eslint, yarn });
-
   return {
     prettier,
     eslint,

@@ -478,8 +478,6 @@ const { textStream } = await streamText({
         try {
           const resolvedPath = await resolveInScope(path);
 
-          console.log({ resolvedPath });
-
           const { stdout, stderr } =
             await $`${prettier} --write ${resolvedPath} && eslint --fix ${resolvedPath}`
               .cwd(pathToFolder(resolvedPath))
@@ -530,6 +528,7 @@ const { textStream } = await streamText({
     - After editing a package.json file, you need to run the install tool.
     - Only use tool names that actually exist.
     - Make sure to repeat any important information to the user such as a result of a tool.
+    - The user wants to know what the result of a tool is.
     - Try to recover from errors.
     - Only use one tool per response. NEVER MORE THAN ONE TOOL. JUST ONE AT A TIME.
     `,
