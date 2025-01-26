@@ -53,7 +53,7 @@ export function createKvFileCache({
   function set(key: string, value: any) {
     return new Promise<void>((resolve, reject) => {
       db.run(
-        "INSERT INTO cache (key, value) VALUES ($key, $value)",
+        "INSERT OR REPLACE INTO cache (key, value) VALUES ($key, $value)",
         {
           $key: `${context}:${key}`,
           $value: JSON.stringify(value),
