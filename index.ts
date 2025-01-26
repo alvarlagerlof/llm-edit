@@ -29,7 +29,7 @@ const scopeFolder = resolve(values.folder);
 const { prettier, eslint, yarn } = getBinaries();
 const model = getCurrentModel();
 
-console.log({
+console.log("INFO", {
   params: {
     folder: values.folder,
     prompt: values.prompt,
