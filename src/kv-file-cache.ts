@@ -2,7 +2,7 @@ import { resolve } from "path";
 import { cwd } from "process";
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "fs";
-import { pathToFolder } from "./utils/files";
+import { pathToFolder } from "./files";
 
 export function createKvFileCache({
   name,

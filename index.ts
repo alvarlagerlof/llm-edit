@@ -12,12 +12,11 @@ import { writeFile } from "fs/promises";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
 import { z } from "zod";
-import { $, Glob } from "bun";
-import { replaceSnippetInText } from "./utils/replace-snippet";
+import { $ } from "bun";
+import { replaceSnippetInText } from "./src/replace-snippet";
 import { parseArgs } from "util";
-import { existsSync } from "fs";
-import { createKvFileCache } from "./kv-file-cache";
-import { getBinaries, pathToFolder, scan } from "./utils/files";
+import { createKvFileCache } from "./src/kv-file-cache";
+import { getBinaries, pathToFolder, resolveInScope, scan } from "./src/files";
 
 const { values } = parseArgs({
   args: Bun.argv,
@@ -121,41 +120,6 @@ const wrappedLanguageModel = experimental_wrapLanguageModel({
   },
 });
 
-async function resolveInScope(relativePath: string) {
-  const cleanedPath = relativePath.replaceAll(`'`, ``);
-
-  let result = "";
-
-  if (cleanedPath.startsWith("/")) {
-    result = resolve(scopeFolder, cleanedPath.substring(1));
-  }
-  result = resolve(scopeFolder, cleanedPath);
-
-  if (!existsSync(result)) {
-    const glob = new Glob(`**/${relativePath}`);
-
-    const results = [];
-    for await (const file of glob.scan(scopeFolder)) {
-      if (!file.includes("node_modules")) {
-        results.push(file);
-      }
-    }
-
-    if (results.length === 1) {
-      result = resolve(scopeFolder, results[0]);
-      return result;
-    }
-
-    if (results.length > 1) {
-      throw new Error(`Multiple files found for ${relativePath}`);
-    }
-
-    throw new Error(`File ${result} does not exist`);
-  }
-
-  return result;
-}
-
 const { prettier, eslint, yarn } = getBinaries();
 
 const { textStream } = await streamText({
@@ -238,7 +202,10 @@ const { textStream } = await streamText({
       execute: async ({ path }) => {
         console.log("\nread_file", { path });
         try {
-          return await readFile(await resolveInScope(path), "utf-8");
+          return await readFile(
+            await resolveInScope({ scopeFolder, relativePath: path }),
+            "utf-8"
+          );
         } catch (error) {
           // @ts-expect-error TODO: fix this
           return error.message;
@@ -261,7 +228,7 @@ const { textStream } = await streamText({
         console.log("\nedit_file", { path, instruction });
         try {
           const fileContent = await readFile(
-            await resolveInScope(path),
+            await resolveInScope({ scopeFolder, relativePath: path }),
             "utf-8"
           );
 
@@ -407,7 +374,10 @@ const { textStream } = await streamText({
             replacement: textStreamResultText,
           });
 
-          await writeFile(await resolveInScope(path), newTextContent);
+          await writeFile(
+            await resolveInScope({ scopeFolder, relativePath: path }),
+            newTextContent
+          );
 
           return `File ${path} has been edited.`;
         } catch (error) {
@@ -445,7 +415,10 @@ const { textStream } = await streamText({
       execute: async ({ path }) => {
         console.log("\nlint", { path });
         try {
-          const resolvedPath = await resolveInScope(path);
+          const resolvedPath = await resolveInScope({
+            scopeFolder,
+            relativePath: path,
+          });
 
           const { stdout, stderr } =
             await $`${prettier} --check ${resolvedPath} && eslint ${resolvedPath}`
@@ -476,7 +449,10 @@ const { textStream } = await streamText({
       execute: async ({ path }) => {
         console.log("\nformat", { path });
         try {
-          const resolvedPath = await resolveInScope(path);
+          const resolvedPath = await resolveInScope({
+            scopeFolder,
+            relativePath: path,
+          });
 
           const { stdout, stderr } =
             await $`${prettier} --write ${resolvedPath} && eslint --fix ${resolvedPath}`
@@ -503,7 +479,10 @@ const { textStream } = await streamText({
       execute: async () => {
         console.log("\ninstall");
         try {
-          const resolvedPath = await resolveInScope(".");
+          const resolvedPath = await resolveInScope({
+            scopeFolder,
+            relativePath: ".",
+          });
 
           const output = await $`${yarn} install --json`
             .cwd(pathToFolder(resolvedPath))
