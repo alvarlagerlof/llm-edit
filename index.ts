@@ -17,7 +17,7 @@ import { replaceSnippetInText } from "./utils/replace-snippet";
 import { parseArgs } from "util";
 import { existsSync } from "fs";
 import { createKvFileCache } from "./kv-file-cache";
-import { pathToFolder } from "./path-to-folder";
+import { getBinaries, pathToFolder, scan } from "./utils/files";
 
 const { values } = parseArgs({
   args: Bun.argv,
@@ -156,9 +156,7 @@ async function resolveInScope(relativePath: string) {
   return result;
 }
 
-const prettierBin = "/Users/alvar/.nvm/versions/node/v22.12.0/bin/prettier";
-const eslintBin = "/Users/alvar/.nvm/versions/node/v22.12.0/bin/eslint";
-const yarnBin = "/Users/alvar/.nvm/versions/node/v22.12.0/bin/yarn";
+const { prettier, eslint, yarn } = getBinaries();
 
 const { textStream } = await streamText({
   model: wrappedLanguageModel,
@@ -184,14 +182,7 @@ const { textStream } = await streamText({
       execute: async ({ name }) => {
         console.log("\nfind_file", { name });
         try {
-          const glob = new Glob(`**/${name}`);
-
-          const results = [];
-          for await (const file of glob.scan(scopeFolder)) {
-            if (!file.includes("node_modules")) {
-              results.push(file);
-            }
-          }
+          const results = await scan({ scopeFolder, relativePath: name });
 
           return results.join("\n");
         } catch (error) {
@@ -457,7 +448,7 @@ const { textStream } = await streamText({
           const resolvedPath = await resolveInScope(path);
 
           const { stdout, stderr } =
-            await $`${prettierBin} --check ${resolvedPath} `
+            await $`${prettier} --check ${resolvedPath} && eslint ${resolvedPath}`
               .cwd(pathToFolder(resolvedPath))
               .nothrow()
               .quiet();
@@ -490,7 +481,7 @@ const { textStream } = await streamText({
           console.log({ resolvedPath });
 
           const { stdout, stderr } =
-            await $`${prettierBin} --write ${resolvedPath}`
+            await $`${prettier} --write ${resolvedPath} && eslint --fix ${resolvedPath}`
               .cwd(pathToFolder(resolvedPath))
               .nothrow()
               .quiet();
@@ -516,7 +507,7 @@ const { textStream } = await streamText({
         try {
           const resolvedPath = await resolveInScope(".");
 
-          const output = await $`${yarnBin} install --json`
+          const output = await $`${yarn} install --json`
             .cwd(pathToFolder(resolvedPath))
             .nothrow()
             .text();
