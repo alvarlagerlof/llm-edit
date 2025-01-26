@@ -2,10 +2,6 @@ import { evalite } from "evalite";
 
 import {
   createMemoryFileSystem,
-  ESLintMultiFile,
-  LevenshteinMultiFile,
-  LLMPromptInputOutputEvaluatorMultiFile,
-  PrettierMultiFile,
   runEvalTask,
   type EvalInput,
   type EvalOutput,
