@@ -211,6 +211,11 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalOutput>({
     for (const [outputFileName, outputText] of Object.entries(
       output.memoryFileSystem
     )) {
+      if (outputFileName.endsWith(".md") || outputFileName.endsWith(".json")) {
+        scores[outputFileName] = { score: 1, meta: "Ignored file type" };
+        continue;
+      }
+
       try {
         const eslint = new ESLint({
           baseConfig: {},
