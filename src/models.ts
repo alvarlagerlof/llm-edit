@@ -47,6 +47,11 @@ export function getCurrentModel() {
               } else return p;
             }
           );
+
+          for (const chunk of formattedChunks) {
+            logChunk(chunk);
+          }
+
           return {
             stream: simulateReadableStream({
               initialDelayInMs: 0,
@@ -69,6 +74,8 @@ export function getCurrentModel() {
           transform(chunk, controller) {
             fullResponse.push(chunk);
             controller.enqueue(chunk);
+
+            logChunk(chunk);
           },
           flush() {
             // Store the full response in the cache after streaming is complete
@@ -85,4 +92,17 @@ export function getCurrentModel() {
   });
 
   return wrappedLanguageModel;
+}
+
+function logChunk(chunk: LanguageModelV1StreamPart) {
+  if (chunk.type === "tool-call") {
+    console.log(
+      "\nTOOL_CALL",
+      {
+        name: chunk.toolName,
+        args: JSON.parse(chunk.args),
+      },
+      "\n"
+    );
+  }
 }

@@ -60,8 +60,6 @@ const { textStream } = await streamText({
         name: z.string(),
       }),
       execute: async ({ name }) => {
-        console.log("\nfind_file", { name });
-
         return returnErrorsAsText(async () => {
           const results = await scan({ scopeFolder, relativePath: name });
 
@@ -79,10 +77,6 @@ const { textStream } = await streamText({
           .describe("Exact code snippets"),
       }),
       execute: async ({ exact_code_snippets_query }) => {
-        console.log("\nfind_file_paths_by_content", {
-          exact_code_snippets_query,
-        });
-
         return returnErrorsAsText(async () => {
           const filePaths = [];
 
@@ -111,7 +105,6 @@ const { textStream } = await streamText({
       `,
       parameters: z.object({ path: z.string() }),
       execute: async ({ path }) => {
-        console.log("\nread_file", { path });
         return returnErrorsAsText(async () => {
           return await readFile(
             await resolveInScope({ scopeFolder, relativePath: path }),
@@ -133,7 +126,6 @@ const { textStream } = await streamText({
         instruction: z.string(),
       }),
       execute: async ({ path, instruction }) => {
-        console.log("\nedit_file", { path, instruction });
         return returnErrorsAsText(async () => {
           const fileContent = await readFile(
             await resolveInScope({ scopeFolder, relativePath: path }),
@@ -299,7 +291,6 @@ const { textStream } = await streamText({
         package_name: z.string(),
       }),
       execute: async ({ package_name }) => {
-        console.log("\nget_latest_version_of_package", { package_name });
         return returnErrorsAsText(async () => {
           const { stdout } = await $`npm view ${package_name} version`;
           return stdout.toString("utf8");
@@ -315,7 +306,6 @@ const { textStream } = await streamText({
         path: z.string(),
       }),
       execute: async ({ path }) => {
-        console.log("\nlint", { path });
         return returnErrorsAsText(async () => {
           const resolvedPath = await resolveInScope({
             scopeFolder,
@@ -346,7 +336,6 @@ const { textStream } = await streamText({
         path: z.string(),
       }),
       execute: async ({ path }) => {
-        console.log("\nformat", { path });
         return returnErrorsAsText(async () => {
           const resolvedPath = await resolveInScope({
             scopeFolder,
@@ -373,7 +362,6 @@ const { textStream } = await streamText({
       `,
       parameters: z.object({}),
       execute: async () => {
-        console.log("\ninstall");
         return returnErrorsAsText(async () => {
           const resolvedPath = await resolveInScope({
             scopeFolder,
@@ -406,12 +394,19 @@ const { textStream } = await streamText({
     `,
   prompt: values.prompt,
   onStepFinish({ text, toolCalls, toolResults, finishReason, usage }) {
-    console.log("\nonStepFinish", {
-      //   text,
-      toolCalls,
-      toolResults,
-      //   finishReason,
-    });
+    console.log("\n");
+
+    for (const toolResult of toolResults) {
+      console.log(
+        "\nTOOL_RESULT",
+        {
+          name: toolResult.toolName,
+          args: toolResult.args,
+          result: toolResult.result,
+        },
+        "\n"
+      );
+    }
   },
 });
 
