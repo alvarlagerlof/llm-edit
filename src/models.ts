@@ -83,7 +83,7 @@ export function getCurrentModel() {
           return {
             stream: simulateReadableStream({
               initialDelayInMs: 0,
-              chunkDelayInMs: 10,
+              chunkDelayInMs: 5,
               chunks: formattedChunks,
             }),
             rawCall: { rawPrompt: null, rawSettings: {} },

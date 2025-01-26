@@ -5,6 +5,9 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { check, format } from "prettier";
 import { ESLint } from "eslint";
+import { getCurrentModel } from "../models";
+import { generateObject } from "ai";
+import { z } from "zod";
 
 const prettierOptions = {
   printWidth: 100,
@@ -235,5 +238,98 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalOutput>({
         ...scores,
       },
     };
+  },
+});
+
+export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
+  EvalInput,
+  EvalOutput
+>({
+  name: "LLM",
+  description:
+    "A simple scorer checks the output file system matches the goals set in the prompt.",
+  scorer: async ({ input, output }) => {
+    function printMemoryFileSystem(memoryFileSystem: MemoryFileSystem) {
+      let printedOutputFileSystem = "";
+
+      for (const [outputFileName, outputText] of Object.entries(
+        output.memoryFileSystem
+      )) {
+        printedOutputFileSystem +=
+          outputFileName +
+          "\n" +
+          outputText +
+          "\n\n---------------------------------------------\n\n";
+      }
+
+      return printedOutputFileSystem;
+    }
+
+    const model = getCurrentModel();
+
+    try {
+      const {
+        object: { score, reasoning },
+      } = await generateObject({
+        model,
+        system: `
+          You are a careful and critical LLM agent reviewer, ensuring quality of output.
+
+          You will receive a prompt, input and output files.
+          Give a score 1-100 for how well the prompt is solved for in the output files based these factors:
+          - How well the output matches the goal of the prompt.
+          - Correctness of the output.
+          - Syntax errors in the output.
+          - Likelihood of the output to be executable (if it is code).
+          - Unrelated files should not be changed.
+
+          When there is any issue that leads the the goal not being achieved, lower the score dramatically (below 50 is fine)
+
+          Also give your reasoning for the score, explaining why you think the score is what it is. This is important.
+
+          call the tool!
+          {
+            "reasoning": "The reasoning for the score",
+            "score": 20
+          }
+        `,
+        prompt: `
+          prompt: ${input.prompt}
+
+          input files:
+          ${printMemoryFileSystem(input.memoryFileSystem)}
+
+          output files:
+          ${printMemoryFileSystem(output.memoryFileSystem)}
+        `,
+        schema: z.object({
+          score: z.number(),
+          reasoning: z.string(),
+        }),
+        maxRetries: 3,
+      });
+      return {
+        score: score / 100,
+        metadata: {
+          reasoning,
+        },
+      };
+    } catch (error) {
+      console.error(error);
+      if (error instanceof Error) {
+        return {
+          score: 0,
+          metadata: {
+            error: `${error.name}: ${error.message}`,
+          },
+        };
+      }
+      return {
+        score: 0,
+        metadata: {
+          error: String(error),
+        },
+      };
+    }
   },
 });

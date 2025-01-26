@@ -6,11 +6,18 @@ import {
   createTemporaryFileSystem,
   ESLintMultiFile,
   LevenshteinMultiFile,
+  LLMPromptInputOutputEvaluatorMultiFile,
   PrettierMultiFile,
   type EvalInput,
   type EvalOutput,
-  type MemoryFileSystem,
 } from "./test-helpers";
+
+const scorers = [
+  LLMPromptInputOutputEvaluatorMultiFile,
+  LevenshteinMultiFile,
+  PrettierMultiFile,
+  ESLintMultiFile,
+];
 
 evalite<EvalInput, EvalOutput>("Edit README.md", {
   data: async () => {
@@ -56,7 +63,7 @@ evalite<EvalInput, EvalOutput>("Edit README.md", {
       memoryFileSystem: await temporaryFileSystem.readToMemoryFileSystem(),
     };
   },
-  scorers: [LevenshteinMultiFile, PrettierMultiFile, ESLintMultiFile],
+  scorers,
 });
 
 evalite<EvalInput, EvalOutput>("Copy solution from file", {
@@ -107,7 +114,7 @@ evalite<EvalInput, EvalOutput>("Copy solution from file", {
       memoryFileSystem: await temporaryFileSystem.readToMemoryFileSystem(),
     };
   },
-  scorers: [LevenshteinMultiFile, PrettierMultiFile, ESLintMultiFile],
+  scorers,
 });
 
 evalite<EvalInput, EvalOutput>("Rename function", {
@@ -161,5 +168,5 @@ evalite<EvalInput, EvalOutput>("Rename function", {
       memoryFileSystem: await temporaryFileSystem.readToMemoryFileSystem(),
     };
   },
-  scorers: [LevenshteinMultiFile, PrettierMultiFile, ESLintMultiFile],
+  scorers,
 });
