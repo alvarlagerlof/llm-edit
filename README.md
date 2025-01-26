@@ -1,4 +1,4 @@
-# ai-edit
+# llm-edit
 
 To install dependencies:
 
@@ -9,7 +9,7 @@ bun install
 To run:
 
 ```bash
-bun run --watch index.ts \
+bun run --watch src/bin.ts \
 --folder ../folder \
 --prompt "$(cat <<EOF
 prompt goes here
