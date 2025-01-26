@@ -33,7 +33,7 @@ export async function aiEdit({
       yarn,
     },
     scopeFolder,
-    modeId: model.modelId,
+    modelId: model.modelId,
   });
   console.log(separator);
 
@@ -146,6 +146,44 @@ export async function aiEdit({
               await resolveInScope({ scopeFolder, relativePath: path }),
               "utf-8"
             );
+
+            if (fileContent.length < 1000) {
+              const { textStream: textStreamResult } = await streamText({
+                model,
+                system: `
+                  You are a text editor.
+                  You take an text file and an instruction.
+                  You return the entire text file, but modified according to the instruction.
+                  Return raw text, no extra comments.
+                `,
+                prompt: `
+                  file_path:
+                  ${path}
+
+                  file_content:
+                  ${fileContent}
+
+                  instruction:
+                  ${instruction}
+                `,
+              });
+
+              let textStreamResultText = "";
+              console.log("\nbegin result\n");
+              for await (const textPartResult of textStreamResult) {
+                process.stdout.write(textPartResult);
+                textStreamResultText += textPartResult;
+              }
+              textStreamResultText += "\n";
+              console.log("\nend result\n");
+
+              await writeFile(
+                await resolveInScope({ scopeFolder, relativePath: path }),
+                textStreamResultText
+              );
+
+              return `File ${path} has been edited.`;
+            }
 
             const { textStream: textStreamNewInstruction } = await streamText({
               model,
