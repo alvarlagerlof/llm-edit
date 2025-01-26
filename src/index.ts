@@ -117,6 +117,10 @@ export async function aiEdit({
         parameters: z.object({ path: z.string() }),
         execute: async ({ path }) => {
           return returnErrorsAsText(async () => {
+            if (path == "") {
+              throw new Error("Please provide a non-empty path to read from.");
+            }
+
             return await readFile(
               await resolveInScope({ scopeFolder, relativePath: path }),
               "utf-8"
@@ -436,12 +440,13 @@ export async function aiEdit({
       return { ...toolCall, args: JSON.stringify(repairedArgs) };
     },
     toolChoice: "auto",
-    maxSteps: 10,
+    maxSteps: 20,
     system: `
     - You are an autonomous AI agent.
     - Don't ask for user input.
     - Never ask the user questions or for clarifications.
     - When the user mentions a path, they usually mean it to stay relative. The tools support relative paths.
+    - If the users says "take a look at", then probably they mean "read".
     - Make sure to repeat any important information to the user such as a result of a tool.
     - The user wants to know what the result of a tool is.
     - Try to recover from errors.

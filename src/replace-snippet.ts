@@ -135,7 +135,7 @@ function createBinaryTree(text: string, targetDepth: number) {
       }
       length = newLength;
     }
-    throw new Error("Could not calculate likely max depth");
+    return targetDepth;
   }
 
   const rootNode = createNode(

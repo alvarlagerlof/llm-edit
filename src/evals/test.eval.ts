@@ -4,11 +4,13 @@ import { aiEdit } from "..";
 import {
   createMemoryFileSystem,
   createTemporaryFileSystem,
+  ESLintMultiFile,
   LevenshteinMultiFile,
+  PrettierMultiFile,
   type MemoryFileSystem,
 } from "./test-helpers";
 
-evalite<MemoryFileSystem, MemoryFileSystem>("Edit file", {
+evalite<MemoryFileSystem, MemoryFileSystem>("Edit README.md", {
   data: async () => {
     return [
       {
@@ -45,5 +47,96 @@ evalite<MemoryFileSystem, MemoryFileSystem>("Edit file", {
 
     return temporaryFileSystem.readToMemoryFileSystem();
   },
-  scorers: [LevenshteinMultiFile],
+  scorers: [LevenshteinMultiFile, PrettierMultiFile, ESLintMultiFile],
+});
+
+evalite<MemoryFileSystem, MemoryFileSystem>("Copy solution from file", {
+  data: async () => {
+    return [
+      {
+        input: await createMemoryFileSystem(
+          {
+            "PROBLEM.md": `The secret number is: 74. Write your solution in SOLUTION.md.`,
+            "SOLUTION.md": `Answer: `,
+          },
+          {
+            addEslintConfig: true,
+            formatFiles: true,
+          }
+        ),
+        expected: await createMemoryFileSystem(
+          {
+            "PROBLEM.md": `The secret number is: 74. Write your solution in SOLUTION.md.`,
+            "SOLUTION.md": `Answer: 74.`,
+          },
+          {
+            addEslintConfig: true,
+            formatFiles: true,
+          }
+        ),
+      },
+    ];
+  },
+  task: async (input) => {
+    const temporaryFileSystem = await createTemporaryFileSystem();
+    temporaryFileSystem.hydrateMemoryFileSystem(input);
+
+    await aiEdit({
+      folder: temporaryFileSystem.workingDirectory,
+      prompt:
+        "Read PROBLEM.md. Then read SOLUTION.md." +
+        "Keep in mind that when calling a tool, important information to be able to complete the task has to be provided. " +
+        "Complete the full task on your own without user input. You may use further tools to complete the task.",
+    });
+
+    return temporaryFileSystem.readToMemoryFileSystem();
+  },
+  scorers: [LevenshteinMultiFile, PrettierMultiFile, ESLintMultiFile],
+});
+
+evalite<MemoryFileSystem, MemoryFileSystem>("Rename function", {
+  data: async () => {
+    return [
+      {
+        input: await createMemoryFileSystem(
+          {
+            "math.ts": `
+                function add(a: number, b: number) {
+                  return a + b;
+                }
+              `,
+          },
+          {
+            addEslintConfig: true,
+            formatFiles: true,
+          }
+        ),
+        expected: await createMemoryFileSystem(
+          {
+            "math.ts": `
+                function addTwoNumbers(a: number, b: number) {
+                  return a + b;
+                }
+              `,
+          },
+          {
+            addEslintConfig: true,
+            formatFiles: true,
+          }
+        ),
+      },
+    ];
+  },
+  task: async (input) => {
+    const temporaryFileSystem = await createTemporaryFileSystem();
+    temporaryFileSystem.hydrateMemoryFileSystem(input);
+
+    await aiEdit({
+      folder: temporaryFileSystem.workingDirectory,
+      prompt: "Rename the function 'add' to 'addTwoNumbers' in math.ts.",
+    });
+
+    return temporaryFileSystem.readToMemoryFileSystem();
+  },
+  scorers: [LevenshteinMultiFile, PrettierMultiFile, ESLintMultiFile],
 });
