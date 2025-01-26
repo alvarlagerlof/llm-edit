@@ -303,7 +303,8 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
           - Likelihood of the output to be executable (if it is code).
           - Unrelated files should not be changed.
 
-          When there is any issue that leads the the goal not being achieved, lower the score dramatically (below 50 is fine)
+          When there is any issue that leads the the goal not being achieved, lower the score dramatically (below 50 is fine).
+          At the same time, when the goal is achieved fully without issues, give a score of 100.
 
           Also give your reasoning for the score, explaining why you think the score is what it is. This is important.
 
