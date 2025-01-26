@@ -124,7 +124,7 @@ export const LevenshteinMultiFile = createScorer<EvalInput, EvalExpected>({
       };
     }
 
-    const scores: Record<string, { score: number; meta: any }> = {};
+    const scores: Record<string, { score: number; error?: any }> = {};
 
     for (const [outputFileName, outputText] of Object.entries(
       output.memoryFileSystem
@@ -132,7 +132,7 @@ export const LevenshteinMultiFile = createScorer<EvalInput, EvalExpected>({
       if (!expected.memoryFileSystem[outputFileName]) {
         scores[outputFileName] = {
           score: 0,
-          meta: `Expected file ${outputFileName} not found`,
+          error: `Expected file ${outputFileName} not found`,
         };
         continue;
       }
@@ -143,14 +143,13 @@ export const LevenshteinMultiFile = createScorer<EvalInput, EvalExpected>({
       if (!score.score) {
         scores[outputFileName] = {
           score: 0,
-          meta: `Score for ${outputFileName} is not defined`,
+          error: `Score for ${outputFileName} is not defined`,
         };
         continue;
       }
 
       scores[outputFileName] = {
         score: score.score,
-        meta: null,
       };
     }
 
@@ -159,6 +158,7 @@ export const LevenshteinMultiFile = createScorer<EvalInput, EvalExpected>({
         Object.values(scores)
           .map((value) => value.score)
           .reduce((a, b) => a + b, 0) / Object.keys(scores).length,
+
       metadata: {
         ...scores,
       },
@@ -171,7 +171,7 @@ export const PrettierMultiFile = createScorer<EvalInput, EvalExpected>({
   description:
     "A simple scorer checks if the output file system is correctly formatted according to Prettier.",
   scorer: async ({ output }) => {
-    const scores: Record<string, { score: number; meta: string | null }> = {};
+    const scores: Record<string, { score: number; error?: any }> = {};
 
     for (const [outputFileName, outputText] of Object.entries(
       output.memoryFileSystem
@@ -181,15 +181,15 @@ export const PrettierMultiFile = createScorer<EvalInput, EvalExpected>({
           ...prettierOptions,
           filepath: outputFileName,
         });
-        scores[outputFileName] = { score: valid ? 1 : 0, meta: null };
+        scores[outputFileName] = { score: valid ? 1 : 0 };
       } catch (error) {
         if (error instanceof Error) {
           scores[outputFileName] = {
             score: 0,
-            meta: `${error.name}: ${error.message}`,
+            error: `${error.name}: ${error.message}`,
           };
         }
-        scores[outputFileName] = { score: 0, meta: String(error) };
+        scores[outputFileName] = { score: 0, error: String(error) };
       }
     }
 
@@ -210,13 +210,13 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
   description:
     "A simple scorer checks if the output file system is correctly formatted according to ESLint.",
   scorer: async ({ output }) => {
-    const scores: Record<string, { score: number; meta: any }> = {};
+    const scores: Record<string, { score: number; error?: any }> = {};
 
     for (const [outputFileName, outputText] of Object.entries(
       output.memoryFileSystem
     )) {
       if (outputFileName.endsWith(".md") || outputFileName.endsWith(".json")) {
-        scores[outputFileName] = { score: 1, meta: "Ignored file type" };
+        scores[outputFileName] = { score: 1, error: "Ignored file type" };
         continue;
       }
 
@@ -241,7 +241,7 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
         if (report.length !== 1) {
           scores[outputFileName] = {
             score: 0,
-            meta: `Unexpected report length: ${report.length}`,
+            error: `Unexpected report length: ${report.length}`,
           };
           continue;
         }
@@ -249,19 +249,19 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
         if (reportItem.errorCount > 0) {
           scores[outputFileName] = {
             score: 0,
-            meta: reportItem.messages,
+            error: reportItem.messages,
           };
           continue;
         }
-        scores[outputFileName] = { score: 1, meta: null };
+        scores[outputFileName] = { score: 1 };
       } catch (error) {
         if (error instanceof Error) {
           scores[outputFileName] = {
             score: 0,
-            meta: `${error.name}: ${error.message}`,
+            error: `${error.name}: ${error.message}`,
           };
         }
-        scores[outputFileName] = { score: 0, meta: String(error) };
+        scores[outputFileName] = { score: 0, error: String(error) };
       }
     }
 
