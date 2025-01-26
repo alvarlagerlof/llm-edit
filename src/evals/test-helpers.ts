@@ -12,6 +12,8 @@ import { aiEdit } from "..";
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import globals from "globals";
+import { pathToFolder } from "../files";
+import { mkdir } from "fs/promises";
 
 const prettierOptions = {
   printWidth: 100,
@@ -50,6 +52,10 @@ export async function createMemoryFileSystem(
 
   if (formatFiles) {
     for (const [fileName, fileContent] of Object.entries(memoryFileSystem)) {
+      if (fileName.endsWith(".env")) {
+        continue;
+      }
+
       memoryFileSystem[fileName] = await format(fileContent, {
         ...prettierOptions,
         filepath: fileName,
@@ -65,10 +71,14 @@ export async function createTemporaryFileSystem() {
     join(tmpdir(), `ai-edit-eval-${Math.random()}-${Date.now()}`)
   );
 
-  function hydrateMemoryFileSystem(memoryFileSystem: MemoryFileSystem) {
+  async function hydrateMemoryFileSystem(memoryFileSystem: MemoryFileSystem) {
     for (const [fileName, fileContent] of Object.entries(memoryFileSystem)) {
       const filePath = join(workingDirectory, fileName);
-      writeFile(filePath, fileContent);
+
+      const folder = pathToFolder(filePath) + "/";
+      await mkdir(folder, { recursive: true });
+
+      await writeFile(filePath, fileContent);
     }
   }
 
@@ -81,9 +91,14 @@ export async function createTemporaryFileSystem() {
 
     for await (const file of files) {
       const filePath = join(file.parentPath, file.name);
-      const fileContent = await readFile(filePath, "utf-8");
-      memoryFileSystem[filePath.replace(workingDirectory, "").substring(1)] =
-        fileContent;
+
+      try {
+        const fileContent = await readFile(filePath, "utf-8");
+        memoryFileSystem[filePath.replace(workingDirectory, "").substring(1)] =
+          fileContent;
+      } catch (error) {
+        console.error(error);
+      }
     }
 
     return memoryFileSystem;
@@ -98,7 +113,7 @@ export async function createTemporaryFileSystem() {
 
 export async function runEvalTask(input: EvalInput) {
   const temporaryFileSystem = await createTemporaryFileSystem();
-  temporaryFileSystem.hydrateMemoryFileSystem(input.memoryFileSystem);
+  await temporaryFileSystem.hydrateMemoryFileSystem(input.memoryFileSystem);
 
   await aiEdit({
     folder: temporaryFileSystem.workingDirectory,
@@ -176,6 +191,11 @@ export const PrettierMultiFile = createScorer<EvalInput, EvalExpected>({
     for (const [outputFileName, outputText] of Object.entries(
       output.memoryFileSystem
     )) {
+      if (outputFileName.endsWith(".env")) {
+        scores[outputFileName] = { score: 1, error: "Ignored file type" };
+        continue;
+      }
+
       try {
         const valid = await check(outputText, {
           ...prettierOptions,
