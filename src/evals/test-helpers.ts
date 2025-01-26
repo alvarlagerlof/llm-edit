@@ -8,6 +8,7 @@ import { ESLint } from "eslint";
 import { getCurrentModel } from "../models";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { aiEdit } from "..";
 
 const prettierOptions = {
   printWidth: 100,
@@ -88,6 +89,20 @@ export async function createTemporaryFileSystem() {
     workingDirectory,
     hydrateMemoryFileSystem,
     readToMemoryFileSystem,
+  };
+}
+
+export async function runEvalTask(input: EvalInput) {
+  const temporaryFileSystem = await createTemporaryFileSystem();
+  temporaryFileSystem.hydrateMemoryFileSystem(input.memoryFileSystem);
+
+  await aiEdit({
+    folder: temporaryFileSystem.workingDirectory,
+    prompt: input.prompt,
+  });
+
+  return {
+    memoryFileSystem: await temporaryFileSystem.readToMemoryFileSystem(),
   };
 }
 
@@ -333,3 +348,10 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
     }
   },
 });
+
+export const scorers = [
+  LLMPromptInputOutputEvaluatorMultiFile,
+  LevenshteinMultiFile,
+  PrettierMultiFile,
+  ESLintMultiFile,
+];

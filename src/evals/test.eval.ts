@@ -1,23 +1,16 @@
 import { evalite } from "evalite";
 
-import { aiEdit } from "..";
 import {
   createMemoryFileSystem,
-  createTemporaryFileSystem,
   ESLintMultiFile,
   LevenshteinMultiFile,
   LLMPromptInputOutputEvaluatorMultiFile,
   PrettierMultiFile,
+  runEvalTask,
   type EvalInput,
   type EvalOutput,
+  scorers,
 } from "./test-helpers";
-
-const scorers = [
-  LLMPromptInputOutputEvaluatorMultiFile,
-  LevenshteinMultiFile,
-  PrettierMultiFile,
-  ESLintMultiFile,
-];
 
 evalite<EvalInput, EvalOutput>("Edit README.md", {
   data: async () => {
@@ -50,19 +43,7 @@ evalite<EvalInput, EvalOutput>("Edit README.md", {
       },
     ];
   },
-  task: async (input) => {
-    const temporaryFileSystem = await createTemporaryFileSystem();
-    temporaryFileSystem.hydrateMemoryFileSystem(input.memoryFileSystem);
-
-    await aiEdit({
-      folder: temporaryFileSystem.workingDirectory,
-      prompt: input.prompt,
-    });
-
-    return {
-      memoryFileSystem: await temporaryFileSystem.readToMemoryFileSystem(),
-    };
-  },
+  task: runEvalTask,
   scorers,
 });
 
@@ -101,19 +82,7 @@ evalite<EvalInput, EvalOutput>("Copy solution from file", {
       },
     ];
   },
-  task: async (input) => {
-    const temporaryFileSystem = await createTemporaryFileSystem();
-    temporaryFileSystem.hydrateMemoryFileSystem(input.memoryFileSystem);
-
-    await aiEdit({
-      folder: temporaryFileSystem.workingDirectory,
-      prompt: input.prompt,
-    });
-
-    return {
-      memoryFileSystem: await temporaryFileSystem.readToMemoryFileSystem(),
-    };
-  },
+  task: runEvalTask,
   scorers,
 });
 
@@ -155,18 +124,6 @@ evalite<EvalInput, EvalOutput>("Rename function", {
       },
     ];
   },
-  task: async (input) => {
-    const temporaryFileSystem = await createTemporaryFileSystem();
-    temporaryFileSystem.hydrateMemoryFileSystem(input.memoryFileSystem);
-
-    await aiEdit({
-      folder: temporaryFileSystem.workingDirectory,
-      prompt: input.prompt,
-    });
-
-    return {
-      memoryFileSystem: await temporaryFileSystem.readToMemoryFileSystem(),
-    };
-  },
+  task: runEvalTask,
   scorers,
 });
