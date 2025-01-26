@@ -29,6 +29,9 @@ const scopeFolder = resolve(values.folder);
 const { prettier, eslint, yarn } = getBinaries();
 const model = getCurrentModel();
 
+const separator =
+  "\n\n\n\n-----------------------------------------------\n\n\n\n";
+console.log(separator);
 console.log("INFO", {
   params: {
     folder: values.folder,
@@ -42,8 +45,6 @@ console.log("INFO", {
   scopeFolder,
   modeId: model.modelId,
 });
-const separator =
-  "\n\n\n\n-----------------------------------------------\n\n\n\n";
 console.log(separator);
 
 const { textStream } = await streamText({
