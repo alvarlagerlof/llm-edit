@@ -1470,7 +1470,7 @@ evalite<EvalInput, EvalExpected>(count("Add a New Test File"), {
       {
         input: {
           prompt:
-            "Create (edit) a new test file tests/calculateSum.test.ts for src/calculateSum.ts and add basic unit tests.",
+            "Create (edit) a new test file tests/calculateSum.test.ts for src/calculateSum.ts and add basic unit tests. Careful about using correct tools.",
           memoryFileSystem: await createMemoryFileSystem(
             {
               "src/calculateSum.ts": `
