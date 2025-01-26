@@ -114,7 +114,7 @@ function logChunk(chunk: LanguageModelV1StreamPart) {
       break;
     }
     case "finish": {
-      console.log("\n", chunk.finishReason, "\n");
+      // console.log("\n", chunk.finishReason, "\n");
       break;
     }
     case "response-metadata": {

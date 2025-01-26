@@ -22,21 +22,29 @@ const { values } = parseArgs({
   strict: true,
   allowPositionals: true,
 });
-
-console.log({
-  folder: values.folder,
-  prompt: values.prompt,
-});
-
 if (!values.folder || !values.prompt) {
   throw new Error("Please provide folder and prompt");
 }
-
 const scopeFolder = resolve(values.folder);
-
 const { prettier, eslint, yarn } = getBinaries();
-
 const model = getCurrentModel();
+
+console.log({
+  params: {
+    folder: values.folder,
+    prompt: values.prompt,
+  },
+  binaries: {
+    prettier,
+    eslint,
+    yarn,
+  },
+  scopeFolder,
+  modeId: model.modelId,
+});
+const separator =
+  "\n\n\n\n-----------------------------------------------\n\n\n\n";
+console.log(separator);
 
 const { textStream } = await streamText({
   model,
@@ -407,6 +415,8 @@ const { textStream } = await streamText({
         "\n"
       );
     }
+
+    console.log(separator);
   },
 });
 
