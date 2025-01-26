@@ -43,19 +43,21 @@ evalite<EvalInput, EvalOutput>("Update README.md", {
   scorers,
 });
 
-evalite<EvalInput, EvalOutput>("Copy solution from file to other file", {
+evalite<EvalInput, EvalOutput>("Puzzle", {
   data: async () => {
     return [
       {
         input: {
+          //   prompt:
+          //     "Read PROBLEM.md. Then read SOLUTION.md." +
+          //     "Keep in mind that when calling a tool, important information to be able to complete the task has to be provided. " +
+          //     "Complete the full task on your own without user input. You may use further tools to complete the task.",
           prompt:
-            "Read PROBLEM.md. Then read SOLUTION.md." +
-            "Keep in mind that when calling a tool, important information to be able to complete the task has to be provided. " +
-            "Complete the full task on your own without user input. You may use further tools to complete the task.",
+            "You are on a quest to solve a puzzle. You have file SECRET.md and file SAVE_ANSWER_HERE.md available. GO!",
           memoryFileSystem: await createMemoryFileSystem(
             {
-              "PROBLEM.md": `The secret number is: 74. Write your solution in SOLUTION.md.`,
-              "SOLUTION.md": `Answer: `,
+              "SECRET.md": `The secret number is: 74`,
+              "SAVE_ANSWER_HERE.md": `The puzzle is solved by saving the secret number here: `,
             },
             {
               addEslintConfig: true,
@@ -66,8 +68,8 @@ evalite<EvalInput, EvalOutput>("Copy solution from file to other file", {
         expected: {
           memoryFileSystem: await createMemoryFileSystem(
             {
-              "PROBLEM.md": `The secret number is: 74. Write your solution in SOLUTION.md.`,
-              "SOLUTION.md": `Answer: 74.`,
+              "SECRET.md": `The secret number is: 74`,
+              "SAVE_ANSWER_HERE.md": `The puzzle is solved by saving the secret number here: 74`,
             },
             {
               addEslintConfig: true,
