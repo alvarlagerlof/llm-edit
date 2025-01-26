@@ -90,7 +90,7 @@ export async function createTemporaryFileSystem() {
       recursive: true,
     });
 
-    for await (const file of files) {
+    for await (const file of files.filter((dirent) => dirent.isFile())) {
       const filePath = join(file.parentPath, file.name);
 
       try {
@@ -98,7 +98,7 @@ export async function createTemporaryFileSystem() {
         memoryFileSystem[filePath.replace(workingDirectory, "").substring(1)] =
           fileContent;
       } catch (error) {
-        console.error(error);
+        console.error("Error in readToMemoryFileSystem", error);
       }
     }
 
@@ -363,6 +363,7 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
     const model = getCurrentModel();
 
     try {
+      console.log("generating llm score");
       const {
         object: { score, reasoning },
       } = await generateObject({
@@ -385,7 +386,8 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
 
           Also give your reasoning for the score, explaining why you think the score is what it is. This is important.
 
-          call the tool!
+          call the json tool!
+          args format:
           {
             "reasoning": "The reasoning for the score",
             "score": 20
@@ -402,6 +404,13 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
 
           actual output files:
           ${printMemoryFileSystem(output.memoryFileSystem)}
+
+          call the json tool!
+          args format:
+          {
+            "reasoning": "The reasoning for the score",
+            "score": 20
+          }
         `,
         schema: z.object({
           score: z.number(),

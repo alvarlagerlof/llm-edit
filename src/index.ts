@@ -7,6 +7,8 @@ import { replaceSnippetInText } from "./replace-snippet";
 import { getBinaries, pathToFolder, resolveInScope, scan } from "./files";
 import { getCurrentModel } from "./models";
 import { execSync } from "child_process";
+import { existsSync } from "fs";
+import { mkdir } from "fs/promises";
 
 export async function aiEdit({
   folder,
@@ -154,7 +156,7 @@ export async function aiEdit({
                   You are a text editor.
                   You take an text file and an instruction.
                   You return the entire text file, but modified according to the instruction.
-                  Return raw text, no extra comments.
+                  Return raw text, no extra comments. If the file is code, the output should only be code.
                 `,
                 prompt: `
                   file_path:
@@ -337,6 +339,32 @@ export async function aiEdit({
             );
 
             return `File ${path} has been edited.`;
+          });
+        },
+      }),
+      create_file: tool({
+        description: `
+        A tool for creating an empty file.
+        Make sure to not run this tool before you know for sure what file to create.
+      `,
+        parameters: z.object({
+          path: z.string(),
+        }),
+        execute: async ({ path }) => {
+          return returnErrorsAsText(async () => {
+            const resolvedPath = resolve(scopeFolder, path);
+
+            // Error if the file already exists
+            if (existsSync(resolvedPath)) {
+              throw new Error(`File ${path} already exists.`);
+            }
+
+            const resolvedPathFolder = pathToFolder(resolvedPath) + "/";
+            await mkdir(resolvedPathFolder, { recursive: true });
+
+            await writeFile(resolvedPath, "");
+
+            return `File ${path} has been created.`;
           });
         },
       }),
