@@ -5,6 +5,8 @@ import {
   type LanguageModelV1StreamPart,
   simulateReadableStream,
 } from "ai";
+import { traceAISDKModel } from "evalite/ai-sdk";
+
 import { createKvFileCache } from "./kv-file-cache";
 
 export function getCurrentModel() {
@@ -117,7 +119,7 @@ export function getCurrentModel() {
     },
   });
 
-  return wrappedLanguageModel;
+  return traceAISDKModel(wrappedLanguageModel);
 }
 
 function logChunk(chunk: LanguageModelV1StreamPart) {
