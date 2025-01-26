@@ -35,7 +35,7 @@ export function getCurrentModel() {
         const cacheKey = JSON.stringify(params);
 
         // Check if the result is in the cache
-        const cached = cache.get(cacheKey);
+        const cached = await cache.get(cacheKey);
 
         // If cached, return a simulated ReadableStream that yields the cached result
         if (cached !== null && cached !== undefined) {

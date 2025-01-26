@@ -1,12 +1,12 @@
-import { streamText, tool } from "ai";
+import { generateObject, NoSuchToolError, streamText, tool } from "ai";
 import { writeFile } from "fs/promises";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
 import { z } from "zod";
-import { $ } from "bun";
 import { replaceSnippetInText } from "./replace-snippet";
 import { getBinaries, pathToFolder, resolveInScope, scan } from "./files";
 import { getCurrentModel } from "./models";
+import { execSync } from "child_process";
 
 export async function aiEdit({
   folder,
@@ -80,7 +80,17 @@ export async function aiEdit({
             const filePaths = [];
 
             for (const query of exact_code_snippets_query) {
-              for await (const line of $`find ${scopeFolder} -type f -name "*.ts" -o -name "*.ts" -o -name "*.json" | xargs egrep -il '${query}'`.lines()) {
+              const output = execSync(
+                `find ${scopeFolder} -type f -name "*.ts" -o -name "*.ts" -o -name "*.json" | xargs egrep -il '${query}'`,
+                {
+                  shell: "/bin/zsh",
+                }
+              )
+                .toString()
+                .trim()
+                .split("\n");
+
+              for await (const line of output) {
                 const scopedLine = line
                   .replaceAll(scopeFolder, "")
                   .substring(1);
@@ -232,6 +242,7 @@ export async function aiEdit({
               Notice how both example outputs contain a little bit of lines above and below the relevant snippet for context. This is important.
               It is critical that the snippet exists in the file, and isn't shortened or changed in the middle.
               DO NOT SKIP OVER ANY LINES.
+              DON'T PRODUCE ANY NEW TEXT. THE SNIPPET SHOULD JUST BE AN EXTRACTION FROM THE FILE CONTENT.
             `,
                 prompt: `
               instruction: ${newInstruction}
@@ -258,6 +269,7 @@ export async function aiEdit({
               Be careful about making sure that the end of the code will work with the rest of the file. This means that persevering commas may be critical.
             `,
               prompt: `
+              file_path: ${path}
               instruction: ${instruction}
               code_snippet: ${relevantSnippetText}
             `,
@@ -295,8 +307,13 @@ export async function aiEdit({
         }),
         execute: async ({ package_name }) => {
           return returnErrorsAsText(async () => {
-            const { stdout } = await $`npm view ${package_name} version`;
-            return stdout.toString("utf8");
+            const output = execSync(`npm view ${package_name} version`, {
+              shell: "/bin/zsh",
+            })
+              .toString()
+              .trim();
+
+            return output;
           });
         },
       }),
@@ -315,17 +332,17 @@ export async function aiEdit({
               relativePath: path,
             });
 
-            const { stdout, stderr } =
-              await $`${prettier} --check ${resolvedPath} && eslint ${resolvedPath}`
-                .cwd(pathToFolder(resolvedPath))
-                .nothrow()
-                .quiet();
+            const output = execSync(
+              `${prettier} --check ${resolvedPath} && eslint ${resolvedPath}`,
+              {
+                shell: "/bin/zsh",
+                cwd: pathToFolder(resolvedPath),
+              }
+            )
+              .toString()
+              .trim();
 
-            if (stderr) {
-              return stderr.toString("utf8");
-            }
-
-            return stdout.toString("utf8");
+            return output;
           });
         },
       }),
@@ -345,17 +362,17 @@ export async function aiEdit({
               relativePath: path,
             });
 
-            const { stdout, stderr } =
-              await $`${prettier} --write ${resolvedPath} && eslint --fix ${resolvedPath}`
-                .cwd(pathToFolder(resolvedPath))
-                .nothrow()
-                .quiet();
+            const output = execSync(
+              `${prettier} --write ${resolvedPath} && eslint --fix ${resolvedPath}`,
+              {
+                shell: "/bin/zsh",
+                cwd: pathToFolder(resolvedPath),
+              }
+            )
+              .toString()
+              .trim();
 
-            if (stderr) {
-              return stderr.toString("utf8");
-            }
-
-            return stdout.toString("utf8");
+            return output;
           });
         },
       }),
@@ -371,15 +388,52 @@ export async function aiEdit({
               relativePath: ".",
             });
 
-            const output = await $`${yarn} install --json`
-              .cwd(pathToFolder(resolvedPath))
-              .nothrow()
-              .text();
+            const output = execSync(`${yarn} install --json`, {
+              shell: "/bin/zsh",
+              cwd: pathToFolder(resolvedPath),
+            })
+              .toString()
+              .trim();
 
             return output;
           });
         },
       }),
+    },
+    experimental_repairToolCall: async ({
+      toolCall,
+      tools,
+      parameterSchema,
+      error,
+      messages,
+      system,
+    }) => {
+      console.log("\nexperimental_repairToolCall\n");
+
+      if (NoSuchToolError.isInstance(error)) {
+        return null; // do not attempt to fix invalid tool names
+      }
+
+      const tool = tools[toolCall.toolName as keyof typeof tools];
+
+      const { object: repairedArgs } = await generateObject({
+        model,
+        schema: tool.parameters,
+        prompt: [
+          `The model tried to call the tool "${toolCall.toolName}"` +
+            ` with the following arguments:`,
+          JSON.stringify(toolCall.args),
+          `The tool accepts the following schema:`,
+          JSON.stringify(parameterSchema(toolCall)),
+          "Please fix the arguments.",
+          "Preserve the original argument values fully if possible.",
+          "Disregard any generated absolute paths. Relative paths are fine.",
+        ].join("\n"),
+      });
+
+      console.log("experimental_repairToolCall", { repairedArgs }, "\n");
+
+      return { ...toolCall, args: JSON.stringify(repairedArgs) };
     },
     toolChoice: "auto",
     maxSteps: 10,
@@ -387,14 +441,13 @@ export async function aiEdit({
     - You are an autonomous AI agent.
     - Don't ask for user input.
     - Never ask the user questions or for clarifications.
-    - After doing an edit, it's good to check that the file lints okay. If not, it has to be fixed.
-    - After editing a package.json file, you need to run the install tool.
-    - Only use tool names that actually exist.
     - Make sure to repeat any important information to the user such as a result of a tool.
     - The user wants to know what the result of a tool is.
     - Try to recover from errors.
     - Only use one tool per response. NEVER MORE THAN ONE TOOL. JUST ONE AT A TIME.
     `,
+    // - After doing an edit, it's good to check that the file lints okay. If not, it has to be fixed.
+    // - After editing a package.json file, you need to run the install tool.
     prompt,
     onStepFinish({ text, toolCalls, toolResults, finishReason, usage }) {
       console.log("\n");

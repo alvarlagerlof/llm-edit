@@ -1,8 +1,11 @@
 import { Levenshtein } from "autoevals";
 import { createScorer } from "evalite";
-import type { FileSystem } from "./types";
+import type { MemoryFileSystem } from "./types";
 
-export const LevenshteinMultiFile = createScorer<FileSystem, FileSystem>({
+export const LevenshteinMultiFile = createScorer<
+  MemoryFileSystem,
+  MemoryFileSystem
+>({
   name: "Levenshtein (multi file)",
   description:
     "A simple scorer that uses the Levenshtein distance to compare two file systems.",
@@ -18,28 +21,24 @@ export const LevenshteinMultiFile = createScorer<FileSystem, FileSystem>({
 
     const scores: Record<string, number> = {};
 
-    for (const [expectedFileName, expectedText] of Object.entries(expected)) {
-      if (!output[expectedFileName]) {
-        return {
-          score: 0,
-          metadata: {
-            error: `Expected file ${expectedFileName} not found`,
-          },
-        };
+    for (const [outputFileName, outputText] of Object.entries(output)) {
+      if (!expected[outputFileName]) {
+        scores[outputFileName] = 0;
+        continue;
       }
       const score = await Levenshtein({
-        output: output[expectedFileName],
-        expected: expectedText,
+        output: outputText,
+        expected: expected[outputFileName],
       });
       if (!score.score) {
         return {
           score: 0,
           metadata: {
-            error: `Score for ${expectedFileName} is not defined`,
+            error: `Score for ${outputFileName} is not defined`,
           },
         };
       }
-      scores[expectedFileName] = score.score;
+      scores[outputFileName] = score.score;
     }
 
     return {

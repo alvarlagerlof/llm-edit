@@ -1,6 +1,6 @@
-import { Glob } from "bun";
 import { execSync } from "child_process";
 import { existsSync } from "fs";
+import { globSync } from "glob";
 import { resolve } from "path";
 
 export function pathToFolder(path: string) {
@@ -48,16 +48,16 @@ export async function scan({
   scopeFolder: string;
   relativePath: string;
 }) {
-  const glob = new Glob(`**/${relativePath}`);
-
-  const results = [];
-  for await (const file of glob.scan(scopeFolder)) {
+  const files = [];
+  for await (const file of globSync(`**/${relativePath}`, {
+    cwd: scopeFolder,
+  })) {
     if (!file.includes("node_modules")) {
-      results.push(file);
+      files.push(file);
     }
   }
 
-  return results;
+  return files;
 }
 
 export function getBinaries() {

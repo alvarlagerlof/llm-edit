@@ -1,6 +1,6 @@
 import { resolve } from "path";
 import { cwd } from "process";
-import { Database } from "bun:sqlite";
+import sqlite3 from "sqlite3";
 import { mkdirSync } from "fs";
 import { pathToFolder } from "./files";
 
@@ -19,30 +19,54 @@ export function createKvFileCache({
   const dbFileFolderPath = pathToFolder(dbFilePath) + "/";
   mkdirSync(dbFileFolderPath, { recursive: true });
 
-  const db = new Database(dbFilePath);
+  const db = new sqlite3.Database(dbFilePath);
   db.run(
     "CREATE TABLE IF NOT EXISTS cache (key VARCHAR PRIMARY KEY, value VARCHAR)"
   );
 
   function get(key: string) {
-    const query = db.query("SELECT value FROM cache WHERE key = $key");
-    const result = query.get({ $key: `${context}:${key}` });
-    if (
-      result &&
-      typeof result === "object" &&
-      "value" in result &&
-      typeof result.value === "string"
-    ) {
-      return JSON.parse(result.value);
-    }
-    return null;
+    return new Promise((resolve, reject) => {
+      db.get(
+        "SELECT value FROM cache WHERE key = $key",
+        {
+          $key: `${context}:${key}`,
+        },
+        (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            if (
+              row &&
+              typeof row === "object" &&
+              "value" in row &&
+              typeof row.value === "string"
+            ) {
+              resolve(JSON.parse(row.value));
+            }
+            resolve(null);
+          }
+        }
+      );
+    });
   }
 
   function set(key: string, value: string) {
-    const query = db.query(
-      "INSERT INTO cache (key, value) VALUES ($key, $value)"
-    );
-    query.run({ $key: `${context}:${key}`, $value: value });
+    return new Promise<void>((resolve, reject) => {
+      db.run(
+        "INSERT INTO cache (key, value) VALUES ($key, $value)",
+        {
+          $key: `${context}:${key}`,
+          $value: value,
+        },
+        (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
   }
 
   return {
