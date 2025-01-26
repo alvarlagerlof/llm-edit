@@ -133,6 +133,7 @@ evalite<EvalInput, EvalExpected>("Update dependency to latest version", {
             In package.json, update eslint-plugin-react-compiler to the latest version.
             ou may need to find out what the latest version is.
             Proceed without user input until the full task is completed.
+            Take one thing at a time and report back.
             `,
           memoryFileSystem: await createMemoryFileSystem(
             {
