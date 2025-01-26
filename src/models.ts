@@ -72,10 +72,10 @@ export function getCurrentModel() {
           LanguageModelV1StreamPart
         >({
           transform(chunk, controller) {
+            logChunk(chunk);
+
             fullResponse.push(chunk);
             controller.enqueue(chunk);
-
-            logChunk(chunk);
           },
           flush() {
             // Store the full response in the cache after streaming is complete
@@ -95,14 +95,33 @@ export function getCurrentModel() {
 }
 
 function logChunk(chunk: LanguageModelV1StreamPart) {
-  if (chunk.type === "tool-call") {
-    console.log(
-      "\nTOOL_CALL",
-      {
-        name: chunk.toolName,
-        args: JSON.parse(chunk.args),
-      },
-      "\n"
-    );
-  }
+  //   switch (chunk.type) {
+  //     case "tool-call":
+  //       console.log(
+  //         "\nTOOL_CALL",
+  //         {
+  //           name: chunk.toolName,
+  //           args: JSON.parse(chunk.args),
+  //         },
+  //         "\n"
+  //       );
+  //       break;
+  //     case "text-delta":
+  //       process.stdout.write(chunk.textDelta);
+  //       break;
+  //     case "tool-call-delta": {
+  //       //   process.stdout.write(chunk.argsTextDelta);
+  //       break;
+  //     }
+  //     case "finish": {
+  //       console.log("\n", chunk.finishReason, "\n");
+  //       break;
+  //     }
+  //     case "response-metadata": {
+  //       break;
+  //     }
+  //     default:
+  //       console.log("Unknown chunk type", chunk);
+  //       break;
+  //   }
 }
