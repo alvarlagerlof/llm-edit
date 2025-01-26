@@ -289,7 +289,7 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
       let printedOutputFileSystem = "";
 
       for (const [outputFileName, outputText] of Object.entries(
-        output.memoryFileSystem
+        memoryFileSystem
       )) {
         printedOutputFileSystem +=
           outputFileName +
