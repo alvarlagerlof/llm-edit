@@ -92,6 +92,7 @@ evalite<EvalInput, EvalExpected>("Rename function", {
                       function add(a: number, b: number) {
                         return a + b;
                       }
+                      console.log(add(1, 2));
                     `,
             },
             {
@@ -107,6 +108,7 @@ evalite<EvalInput, EvalExpected>("Rename function", {
                       function addTwoNumbers(a: number, b: number) {
                         return a + b;
                       }
+                      console.log(addTwoNumbers(1, 2));
                     `,
             },
             {

@@ -11,6 +11,7 @@ import { z } from "zod";
 import { aiEdit } from "..";
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
+import globals from "globals";
 
 const prettierOptions = {
   printWidth: 100,
@@ -226,7 +227,14 @@ export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
           // @ts-expect-error Types complain, but it works.
           overrideConfig: tseslint.config(
             eslint.configs.recommended,
-            tseslint.configs.recommended
+            tseslint.configs.recommended,
+            {
+              languageOptions: {
+                globals: {
+                  ...globals.node,
+                },
+              },
+            }
           ),
         });
         const report = await eslintInstance.lintText(outputText, {});
