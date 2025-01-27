@@ -303,53 +303,54 @@ describe('calculateSum', () => {
   scorers,
 });
 
-// evalite<EvalInput, EvalExpected>(count("Delete Unused Variables"), {
-//   data: async () => {
-//     return [
-//       {
-//         input: {
-//           prompt: "Find and remove all unused variables in utils.ts.",
-//           memoryFileSystem: await createMemoryFileSystem(
-//             {
-//               "utils.ts": `
-// const usedVar = 42;
-// const unusedVar = 'I am not used';
-// const anotherUnused = true;
+evalite<EvalInput, EvalExpected>(count("Delete Unused Variables"), {
+  data: async () => {
+    return [
+      {
+        input: {
+          prompt:
+            "Remove (by editing) unused variables in utils.ts. Do it by guessing. Don't use the linter. Go wild, there is no risk.",
+          memoryFileSystem: await createMemoryFileSystem(
+            {
+              "utils.ts": `
+const usedVar = 42;
+const unusedVar = 'I am not used';
+const anotherUnused = true;
 
-// export function calculate() {
-//   console.log(usedVar);
-// }
-// `,
-//             },
-//             {
-//               addEslintConfig: false,
-//               formatFiles: true,
-//             }
-//           ),
-//         },
-//         expected: {
-//           memoryFileSystem: await createMemoryFileSystem(
-//             {
-//               "utils.ts": `
-// const usedVar = 42;
+export function calculate() {
+  console.log(usedVar);
+}
+`,
+            },
+            {
+              addEslintConfig: false,
+              formatFiles: true,
+            }
+          ),
+        },
+        expected: {
+          memoryFileSystem: await createMemoryFileSystem(
+            {
+              "utils.ts": `
+const usedVar = 42;
 
-// export function calculate() {
-//   console.log(usedVar);
-// }
-// `,
-//             },
-//             {
-//               addEslintConfig: false,
-//               formatFiles: true,
-//             }
-//           ),
-//         },
-//       },
-//     ];
-//   },
-//   task: runEvalTask,
-//   scorers,
-// });
+export function calculate() {
+  console.log(usedVar);
+}
+`,
+            },
+            {
+              addEslintConfig: false,
+              formatFiles: true,
+            }
+          ),
+        },
+      },
+    ];
+  },
+  task: runEvalTask,
+  scorers,
+});
 
 // evalite<EvalInput, EvalExpected>(
 //   count("Refactor Class to Functional Component"),
