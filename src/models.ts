@@ -30,6 +30,10 @@ export function getCurrentModel() {
   // const model = lmstudio("qwen2.5-14b-instruct@q2_k"); // Fails to call tools and object generation.
   // const model = lmstudio("qwen2.5-14b-instruct@q4_0"); // Slow, fails at object generation.
   // const model = lmstudio("mlx-community/hermes-3-llama-3.1-8b"); // Fast, maybe faster than its sibling. But perhaps less accurate?
+  // const model = lmstudio("llama-3.2-1b-instruct@4bit"); // Very fast, but fails to call tools.
+  // const model = lmstudio("llama-3.2-1b-instruct@8bit"); // Very fast, but fails to call tools.
+  // const model = lmstudio("llama-3.2-1b-instruct-mlxtuned"); // Fast, but fails to call tools.
+  // const model = lmstudio("meta-llama-3.1-8b-instruct"); // Ok at tools, but not standout at coding.
 
   const cache = createKvFileCache({
     name: "response-cache",
