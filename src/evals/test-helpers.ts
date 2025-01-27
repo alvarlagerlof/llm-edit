@@ -6,8 +6,7 @@ import { tmpdir } from "os";
 import { check, format } from "prettier";
 import { ESLint } from "eslint";
 import { getCurrentModel } from "../models";
-import { generateObject } from "ai";
-import { z } from "zod";
+import { streamText } from "ai";
 import { aiEdit } from "..";
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
@@ -375,36 +374,19 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
     const model = getCurrentModel();
 
     try {
-      console.log("generating llm score");
-      const {
-        object: { score, reasoning },
-      } = await generateObject({
+      const { textStream: reasoningStream } = streamText({
         model,
         ...inferenceOptionsAsyncLocalStorage.getStore(),
         system: `
           You are a careful and critical LLM agent reviewer, ensuring quality of output.
 
           You will receive a prompt, input and output files.
-          Give a score 1-100 for how well the prompt is solved for in the output files based these factors:
+          Return a text for how well the prompt is solved for in the actual output files based these factors:
           - How well the output matches the goal of the prompt.
           - Correctness of the output.
           - Syntax errors in the output.
           - Likelihood of the output to be executable (if it is code).
           - Unrelated files should not be changed.
-          - Additional newlines at the end DO NOT LOWER THE SCORE.
-          - If the actual output matches the expected output, give a score of 100.
-
-          When there is any issue that leads the the goal not being achieved, lower the score dramatically (below 50 is fine).
-          At the same time, when the goal is achieved fully without issues, give a score of 100.
-
-          Also give your reasoning for the score, explaining why you think the score is what it is. This is important.
-
-          call the json tool!
-          args format:
-          {
-            "reasoning": "The reasoning for the score",
-            "score": 20
-          }
         `,
         prompt: `
           prompt: ${input.prompt}
@@ -417,22 +399,43 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
 
           actual output files (this is what matters):
           ${printMemoryFileSystem(output.memoryFileSystem)}
-
-          call the json tool!
-          args format:
-          {
-            "reasoning": "The reasoning for the score",
-            "score": 20
-          }
         `,
-        schema: z.object({
-          score: z.number(),
-          reasoning: z.string(),
-        }),
-        maxRetries: 3,
       });
+      console.log("begin llm scorer reasoning");
+      let reasoning = "";
+      for await (const textPart of reasoningStream) {
+        process.stdout.write(textPart);
+        reasoning += textPart;
+      }
+      console.log("end llm scorer reasoning");
+
+      const { textStream: scoreStream } = streamText({
+        model,
+        ...inferenceOptionsAsyncLocalStorage.getStore(),
+        system: `
+          You will be given some reasoning, and your job is to convert it to a score of 0-100.
+
+          When there is any issue that leads the the goal not being achieved, lower the score dramatically (below 50 is fine).
+          At the same time, when the goal is achieved fully without issues, give a score of 100.
+
+          Only return the number, and nothing else.
+        `,
+        prompt: `
+          ${await reasoning}
+        `,
+      });
+      console.log("being llm scorer score");
+      let score = "";
+      for await (const textPart of scoreStream) {
+        process.stdout.write(textPart);
+        score += textPart;
+      }
+      console.log("end llm scorer score");
+
+      const parsedScore = parseInt((await score).replace(/\D/g, ""));
+
       return {
-        score: score / 100,
+        score: parsedScore / 100,
         metadata: {
           reasoning,
         },
