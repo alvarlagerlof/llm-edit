@@ -5,4 +5,6 @@ export const inferenceOptionsAsyncLocalStorage = new AsyncLocalStorage<{
   topP?: number;
   topK?: number;
   temperature?: number;
+  presencePenalty?: number;
+  frequencyPenalty?: number;
 }>();

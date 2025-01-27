@@ -5,7 +5,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { check, format } from "prettier";
 import { ESLint } from "eslint";
-import { getCurrentModel } from "../models";
+import { getModel } from "../models";
 import { streamText } from "ai";
 import { aiEdit } from "..";
 import eslint from "@eslint/js";
@@ -371,22 +371,26 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
       return printedOutputFileSystem;
     }
 
-    const model = getCurrentModel();
+    const model = getModel("deepseek-r1-distill-qwen-7b");
 
     try {
       const { textStream: reasoningStream } = streamText({
         model,
         ...inferenceOptionsAsyncLocalStorage.getStore(),
         system: `
-          You are a careful and critical LLM agent reviewer, ensuring quality of output.
+          You are a careful and critical LLM agent reviewer, ensuring quality of actual output.
 
           You will receive a prompt, input and output files.
           Return a text for how well the prompt is solved for in the actual output files based these factors:
           - How well the output matches the goal of the prompt.
-          - Correctness of the output.
-          - Syntax errors in the output.
-          - Likelihood of the output to be executable (if it is code).
+          - Correctness of the actual output.
+          - Syntax errors in the actual output.
+          - Likelihood of the actual output to be executable (if it is code).
           - Unrelated files should not be changed.
+
+          Judge how well the actual output matches the expected output, or follows the prompt.
+
+          Just respond with text, don't give any kind of score.
         `,
         prompt: `
           prompt: ${input.prompt}
@@ -407,21 +411,29 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
         process.stdout.write(textPart);
         reasoning += textPart;
       }
+      reasoning = reasoning.replace(/<think>.*?<\/think>/gs, "").trim();
       console.log("end llm scorer reasoning");
 
       const { textStream: scoreStream } = streamText({
         model,
         ...inferenceOptionsAsyncLocalStorage.getStore(),
         system: `
-          You will be given some reasoning, and your job is to convert it to a score of 0-100.
+          You will be given a pre-made and completed reasoning, and you are asked to convert it to a score of 0-100.
+          Don't be afraid to give a low score when there is a critical error.
+          Also don't be afraid to give a 100 score when everything is correct.
 
-          When there is any issue that leads the the goal not being achieved, lower the score dramatically (below 50 is fine).
-          At the same time, when the goal is achieved fully without issues, give a score of 100.
+          Examples of correct outputs (just examples, any number between 0 and 100 is fine):
+          0
+          100
+          10
+          20
 
-          Only return the number, and nothing else.
+          Your output will be parsed by a computer, so it needs to be clear. There can only be one number in the output.
         `,
+
         prompt: `
-          ${await reasoning}
+          reasoning:
+          ${reasoning}
         `,
       });
       console.log("being llm scorer score");
@@ -430,14 +442,29 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
         process.stdout.write(textPart);
         score += textPart;
       }
+      score = score.replace(/<think>.*?<\/think>/gs, "").trim();
       console.log("end llm scorer score");
 
-      const parsedScore = parseInt((await score).replace(/\D/g, ""));
+      const parsedScore = score
+        .split(/(\d+)/)
+        .filter((s) => s !== "")
+        .map((s) => {
+          // Convert numeric strings to actual numbers
+          const num = Number(s);
+          return isNaN(num) ? s : num;
+        })
+        .filter((s) => typeof s === "number")
+        .at(-1);
+
+      if (parsedScore === undefined) {
+        throw new Error("Could not parse score");
+      }
 
       return {
         score: parsedScore / 100,
         metadata: {
           reasoning,
+          rawScore: score,
         },
       };
     } catch (error) {

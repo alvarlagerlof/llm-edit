@@ -5,7 +5,7 @@ import { resolve } from "path";
 import { z } from "zod";
 import { replaceSnippetInText } from "./replace-snippet";
 import { getBinaries, pathToFolder, resolveInScope, scan } from "./files";
-import { getCurrentModel } from "./models";
+import { getModel } from "./models";
 import { execSync } from "child_process";
 import { existsSync } from "fs";
 import { mkdir } from "fs/promises";
@@ -20,7 +20,7 @@ export async function aiEdit({
 }) {
   const scopeFolder = resolve(folder);
   const { prettier, eslint, yarn } = getBinaries();
-  const model = getCurrentModel();
+  const model = getModel("hermes-3-llama-3.2-3b");
 
   const separator =
     "\n\n\n\n-----------------------------------------------\n\n\n\n";

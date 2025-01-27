@@ -9,7 +9,38 @@ import { traceAISDKModel } from "evalite/ai-sdk";
 
 import { createKvFileCache } from "./kv-file-cache";
 
-export function getCurrentModel() {
+const models = {
+  "deepseek-r1-distill-qwen-7b":
+    "Calls the same tool many times. Good for eval.",
+  "deepseek-r1-distill-qwen-1.5b": "Fast, but gets suck in a repeating loop",
+  "deepseek-r1-distill-qwen-1.5b@6bit":
+    "Fast and very good (at least for eval). But can get stuck in repeating loops.",
+  "unsloth/deepseek-r1-distill-qwen-1.5b": "",
+  "granite-3.1-8b-instruct": "Pretty good. - FAV",
+  "llama-3.2-3b-instruct": "Fails to use tools.",
+  "qwen2.5-coder-3b-instruct": "Fails to use tools.",
+  "gemma-2-2b-it": "Fast, somewhat capable but not for complex tasks.",
+  "gemma-2-9b-it": "Quite fast, but runs multiple tools at once.",
+  "yi-coder-9b-chat":
+    "Quiet good at tool use, but fails at snippet generation and edit.",
+  "hammer2.1-7b": "Errors on startup, prompt jinja template error.",
+  "watt-tool-8b": "Tool call format is not picked up.",
+  "hermes-3-llama-3.1-8b":
+    "Fast, good at tools, and almost perfect at code. - FAV",
+  "hermes-3-llama-3.2-3b":
+    "Fast, manages to run, but doesn't get much actually done.",
+  "mistral-nemo-instruct-2407": "Slow, often fails to call tools.",
+  "qwen2.5-14b-instruct@q2_k": "Fails to call tools and object generation.",
+  "qwen2.5-14b-instruct@q4_0": "Fails to call tools and object generation.",
+  "mlx-community/hermes-3-llama-3.1-8b":
+    "Fast, maybe faster than its sibling. But perhaps less accurate?",
+  "llama-3.2-1b-instruct@4bit": "Very fast, but fails to call tools.",
+  "llama-3.2-1b-instruct@8bit": "Very fast, but fails to call tools.",
+  "llama-3.2-1b-instruct-mlxtuned": "Fast, but fails to call tools.",
+  "meta-llama-3.1-8b-instruct": "Ok at tools, but not standout at coding.",
+};
+
+export function getModel(modelId: keyof typeof models) {
   const lmstudio = createOpenAICompatible({
     name: "lmstudio",
     baseURL: "http://localhost:1234/v1",
@@ -24,8 +55,8 @@ export function getCurrentModel() {
   // const model = lmstudio("yi-coder-9b-chat"); // Quiet good at tool use, but fails at snippet generation and edit.
   // const model = lmstudio("hammer2.1-7b"); // Errors on startup, prompt jinja template error.
   // const model = lmstudio("watt-tool-8b"); // Tool call format is not picked up.
-  const model = lmstudio("hermes-3-llama-3.1-8b"); // Fast, good at tools, and almost perfect at code. - FAV
-  // const model = lmstudio("hermes-3-llama-3.2-3b");  // Bad, fails to call tools.
+  // const model = lmstudio("hermes-3-llama-3.1-8b"); // Fast, good at tools, and almost perfect at code. - FAV
+  // const model = lmstudio("hermes-3-llama-3.2-3b"); // Fast, manages to run, but doesn't get much actually done.
   // const model = lmstudio("mistral-nemo-instruct-2407"); // Slow, often fails to call tools.
   // const model = lmstudio("qwen2.5-14b-instruct@q2_k"); // Fails to call tools and object generation.
   // const model = lmstudio("qwen2.5-14b-instruct@q4_0"); // Slow, fails at object generation.
@@ -34,6 +65,8 @@ export function getCurrentModel() {
   // const model = lmstudio("llama-3.2-1b-instruct@8bit"); // Very fast, but fails to call tools.
   // const model = lmstudio("llama-3.2-1b-instruct-mlxtuned"); // Fast, but fails to call tools.
   // const model = lmstudio("meta-llama-3.1-8b-instruct"); // Ok at tools, but not standout at coding.
+
+  const model = lmstudio(modelId);
 
   const cache = createKvFileCache({
     name: "response-cache",
