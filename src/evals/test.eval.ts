@@ -724,20 +724,14 @@ evalite<EvalInput, EvalExpected>(count("Add New ESLint Rule"), {
             "Add the rule no-explicit-any to the ESLint config and fix all violations.",
           memoryFileSystem: await createMemoryFileSystem(
             {
-              ".eslintrc.json": `
-{
-  "env": {
-    "browser": true,
-    "es2021": true
-  },
-  "extends": ["eslint:recommended"],
-  "parserOptions": {
-    "ecmaVersion": 12,
-    "sourceType": "module"
-  },
-  "rules": {}
-}
-`,
+              "eslint.config.js": `export default [
+  {
+    rules: {
+      semi: "error",
+      "prefer-const": "error"
+    }
+  }
+];`,
               "src/utils.ts": `
 export function processData(data: any) {
   return data.value;
@@ -757,22 +751,15 @@ console.log(result);
         expected: {
           memoryFileSystem: await createMemoryFileSystem(
             {
-              ".eslintrc.json": `
-{
-  "env": {
-    "browser": true,
-    "es2021": true
-  },
-  "extends": ["eslint:recommended"],
-  "parserOptions": {
-    "ecmaVersion": 12,
-    "sourceType": "module"
-  },
-  "rules": {
-    "no-explicit-any": "error"
+              "eslint.config.js": `export default [
+  {
+    rules: {
+      semi: "error",
+      "prefer-const": "error",
+      "no-explicit-any": "error"
+    }
   }
-}
-`,
+];`,
               "src/utils.ts": `
 export function processData(data: unknown) {
   if (typeof data !== 'object' || data === null || !('value' in data)) {
