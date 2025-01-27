@@ -128,6 +128,7 @@ export function getCurrentModel() {
     },
   });
 
+  // @ts-expect-error TODO: Fix types
   return traceAISDKModel(wrappedLanguageModel);
 }
 
