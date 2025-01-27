@@ -9,6 +9,7 @@ import { getCurrentModel } from "./models";
 import { execSync } from "child_process";
 import { existsSync } from "fs";
 import { mkdir } from "fs/promises";
+import { inferenceOptionsAsyncLocalStorage } from "./inferenceOptionsAsyncLocalStorage";
 
 export async function aiEdit({
   folder,
@@ -41,6 +42,7 @@ export async function aiEdit({
 
   const { textStream } = await streamText({
     model,
+    ...inferenceOptionsAsyncLocalStorage.getStore(),
     tools: {
       repeat_user_prompt: tool({
         description: `
@@ -152,6 +154,7 @@ export async function aiEdit({
             if (fileContent.length < 1000) {
               const { textStream: textStreamResult } = await streamText({
                 model,
+                ...inferenceOptionsAsyncLocalStorage.getStore(),
                 system: `
                   You are a text editor.
                   You take an text file and an instruction.
@@ -189,6 +192,7 @@ export async function aiEdit({
 
             const { textStream: textStreamNewInstruction } = await streamText({
               model,
+              ...inferenceOptionsAsyncLocalStorage.getStore(),
               system: `
               You will receive an instruction for an edit of a file.
               Rewrite the instruction to only mention the parts of the file, not the edit request.
@@ -225,6 +229,7 @@ export async function aiEdit({
             const { textStream: textStreamRelevantSnippets } = await streamText(
               {
                 model,
+                ...inferenceOptionsAsyncLocalStorage.getStore(),
                 system: `
               You receive an instruction and a text file.
               Return a subset of the text (unmodified) that is relevant to the instruction.
@@ -305,6 +310,7 @@ export async function aiEdit({
 
             const { textStream: textStreamResult } = await streamText({
               model,
+              ...inferenceOptionsAsyncLocalStorage.getStore(),
               system: `
               You are a text editor.
               You take an instruction and a text snippet,
@@ -488,6 +494,7 @@ export async function aiEdit({
 
       const { object: repairedArgs } = await generateObject({
         model,
+        ...inferenceOptionsAsyncLocalStorage.getStore(),
         schema: tool.parameters,
         prompt: [
           `The model tried to call the tool "${toolCall.toolName}"` +
@@ -506,7 +513,7 @@ export async function aiEdit({
       return { ...toolCall, args: JSON.stringify(repairedArgs) };
     },
     toolChoice: "auto",
-    maxSteps: 20,
+    maxSteps: 8,
     system: `
     - You are an autonomous AI agent.
     - Don't ask for user input.

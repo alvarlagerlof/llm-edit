@@ -15,6 +15,7 @@ import globals from "globals";
 import { pathToFolder } from "../files";
 import { mkdir } from "fs/promises";
 import { createKvFileCache } from "../kv-file-cache";
+import { inferenceOptionsAsyncLocalStorage } from "../inferenceOptionsAsyncLocalStorage";
 
 const prettierOptions = {
   printWidth: 100,
@@ -25,7 +26,13 @@ const prettierOptions = {
 
 export type MemoryFileSystem = Record<string, string>;
 
-export type EvalInput = { prompt: string; memoryFileSystem: MemoryFileSystem };
+export type EvalInput = {
+  prompt: string;
+  inferenceOptions: NonNullable<
+    ReturnType<typeof inferenceOptionsAsyncLocalStorage.getStore>
+  >;
+  memoryFileSystem: MemoryFileSystem;
+};
 export type EvalExpected = {
   memoryFileSystem: MemoryFileSystem;
 };
@@ -116,10 +123,15 @@ export async function runEvalTask(input: EvalInput) {
   const temporaryFileSystem = await createTemporaryFileSystem();
   await temporaryFileSystem.hydrateMemoryFileSystem(input.memoryFileSystem);
 
-  await aiEdit({
-    folder: temporaryFileSystem.workingDirectory,
-    prompt: input.prompt,
-  });
+  await inferenceOptionsAsyncLocalStorage.run(
+    input.inferenceOptions,
+    async () => {
+      await aiEdit({
+        folder: temporaryFileSystem.workingDirectory,
+        prompt: input.prompt,
+      });
+    }
+  );
 
   return {
     memoryFileSystem: await temporaryFileSystem.readToMemoryFileSystem(),
@@ -368,6 +380,7 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
         object: { score, reasoning },
       } = await generateObject({
         model,
+        ...inferenceOptionsAsyncLocalStorage.getStore(),
         system: `
           You are a careful and critical LLM agent reviewer, ensuring quality of output.
 
@@ -399,10 +412,10 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
           input files:
           ${printMemoryFileSystem(input.memoryFileSystem)}
 
-          expected output files:
+          expected output files (compare against these, but they themselves don't count):
           ${printMemoryFileSystem(expected!.memoryFileSystem)}
 
-          actual output files:
+          actual output files (this is what matters):
           ${printMemoryFileSystem(output.memoryFileSystem)}
 
           call the json tool!
