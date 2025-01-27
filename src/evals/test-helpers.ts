@@ -189,7 +189,7 @@ const prettierCache = createKvFileCache({
 export const PrettierMultiFile = createScorer<EvalInput, EvalExpected>({
   name: "Prettier",
   description:
-    "A simple scorer checks if the output file system is correctly formatted according to Prettier.",
+    "Checks if the output file system is correctly formatted according to Prettier.",
   scorer: async ({ output }) => {
     const prettierCacheKey = JSON.stringify({ output, prettierOptions });
 
@@ -251,7 +251,7 @@ const eslintCache = createKvFileCache({
 export const ESLintMultiFile = createScorer<EvalInput, EvalExpected>({
   name: "ESLint",
   description:
-    "A simple scorer checks if the output file system is correctly formatted according to ESLint.",
+    "Checks if the output file system is correctly formatted according to ESLint.",
   scorer: async ({ output }) => {
     const eslintOptions: ESLint.Options = {
       baseConfig: {},
@@ -342,7 +342,7 @@ export const LLMPromptInputOutputEvaluatorMultiFile = createScorer<
 >({
   name: "LLM",
   description:
-    "A simple scorer checks the output file system matches the goals set in the prompt.",
+    "Checks if the output file system matches the goals set in the prompt using an LLM.",
   scorer: async ({ input, expected, output }) => {
     function printMemoryFileSystem(memoryFileSystem: MemoryFileSystem) {
       let printedOutputFileSystem = "";
