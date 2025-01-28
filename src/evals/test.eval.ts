@@ -188,7 +188,7 @@ Take one thing at a time and report back.`,
                     "name": "todo-app",
                     "description": "TODO",
                     "dependencies": {
-                        "eslint-plugin-react-compiler": "19.0.0-beta-e552027-20250112"
+                        "eslint-plugin-react-compiler": "19.0.0-beta-27714ef-20250124"
                     }
                 }
               `,
