@@ -6,12 +6,16 @@
     "eval:dev": "evalite watch"
   },
   "devDependencies": {
+    "@ai-sdk/deepinfra": "^0.1.6",
+    "@ai-sdk/fireworks": "^0.1.6",
     "@ai-sdk/openai-compatible": "^0.1.3",
     "@types/bun": "latest",
     "ai": "^4.1.4",
     "autoevals": "^0.0.118",
     "bun": "",
+    "dotenv": "^16.4.7",
     "eslint": "^9.19.0",
+    "evalite": "link:evalite",
     "glob": "^11.0.1",
     "globals": "^15.14.0",
     "mathjs": "^14.1.0",
@@ -19,8 +23,7 @@
     "sqlite3": "^5.1.7",
     "typescript-eslint": "^8.21.0",
     "vitest": "^3.0.4",
-    "zod": "^3.24.1",
-    "evalite": "link:evalite"
+    "zod": "^3.24.1"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

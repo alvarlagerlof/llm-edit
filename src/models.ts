@@ -1,4 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createDeepInfra } from "@ai-sdk/deepinfra";
 import {
   experimental_wrapLanguageModel,
   type LanguageModelV1,
@@ -66,7 +67,13 @@ export function getModel(modelId: keyof typeof models) {
   // const model = lmstudio("llama-3.2-1b-instruct-mlxtuned"); // Fast, but fails to call tools.
   // const model = lmstudio("meta-llama-3.1-8b-instruct"); // Ok at tools, but not standout at coding.
 
-  const model = lmstudio(modelId);
+  // const model = lmstudio(modelId);
+
+  const deepinfra = createDeepInfra({
+    apiKey: process.env.DEEPINFRA_API_KEY ?? "",
+  });
+
+  const model = deepinfra("meta-llama/Llama-3.3-70B-Instruct-Turbo");
 
   const cache = createKvFileCache({
     name: "response-cache",
