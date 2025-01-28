@@ -160,6 +160,7 @@ export async function aiEdit({
                   You take an text file and an instruction.
                   You return the entire text file, but modified according to the instruction.
                   Return raw text, no extra comments. If the file is code, the output should only be code.
+                  Don't wrap the output in a code block.
                 `,
                 prompt: `
                   file_path:
